@@ -33,6 +33,10 @@ Combinando o melhor dos dois mundos, o ReadStitch entrega uma pipeline completa 
 ### 📥 Download de Raws
 Baixe capítulos diretamente dos principais sites de leitura:
 
+<table>
+<tr>
+<td valign="top">
+
 #### 🌐 Sites em Inglês (EN)
 
 | Site | Suporte |
@@ -44,14 +48,29 @@ Baixe capítulos diretamente dos principais sites de leitura:
 | [QisManga](https://qismanga.com) | ✅ |
 | [Comix](https://comix.jp) | ✅ |
 | [Vortex Scans](https://vortexscans.org) | ✅ |
-| [Piccoma](https://piccoma.com) | ✅ *(requer login)* |
+| [Piccoma](https://piccoma.com) | ✅ *(login)* |
+
+</td>
+<td valign="top">
 
 #### 🇧🇷 Sites em Português (BR)
 
 | Site | Suporte |
 |---|---|
-| [Verdinha / Reaper Scans BR](https://reaperscans.com.br) | ✅ *(requer login)* |
-| [Mediocretoons / MediocreScan](https://mediocrescan.com) | ✅ *(requer login)* |
+| [Verdinha](https://reaperscans.com.br) | ✅ *(login)* |
+| [Mediocretoons](https://mediocrescan.com) | ✅ *(login)* |
+| Capitoons | ✅ |
+| Pluma Comics | ✅ |
+| Geass Comics | ✅ |
+| Lycan Toons | ✅ |
+| Inkapk | ✅ |
+| Nexus | ✅ |
+| Hipercool | ✅ |
+| Vegitoons | ✅ |
+
+</td>
+</tr>
+</table>
 
 > 💡 **Sites com login** exigem que você informe suas credenciais na aba **Baixador → Credenciais de Acesso**. O site é detectado automaticamente pela URL colada — não é necessário selecionar manualmente!
 
