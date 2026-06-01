@@ -10,3 +10,4 @@ beautifulsoup4
 playwright
 playwright-stealth
 image-scramble
+pillow-avif-plugin

@@ -1,6 +1,10 @@
 import os
 from PySide6.QtCore import QThread, Signal, QObject, Qt
-from PySide6.QtWidgets import QFileDialog, QMessageBox, QListWidgetItem, QComboBox, QCheckBox, QProgressBar, QLabel, QHBoxLayout, QWidget
+from PySide6.QtWidgets import (
+    QFileDialog, QMessageBox, QListWidgetItem, QComboBox, QCheckBox,
+    QProgressBar, QLabel, QHBoxLayout, QVBoxLayout, QWidget, QPushButton,
+    QSpinBox, QFrame
+)
 from core.scrapers import get_scraper_for_url
 
 class FetchThread(QThread):
@@ -51,12 +55,15 @@ class DownloadThread(QThread):
             for i, chap_url in enumerate(self.chapters):
                 import re
                 
-                # Tentar extrair o número do capítulo usando a url completa
-                match = re.search(r'(?:chapter|capitulo|cap|ch|episode|ep)(?:_no)?(?:[-_=/\s]*)(\d+(?:\.\d+)?)', str(chap_url), re.IGNORECASE)
+                # Remove fragmentos para nomeação correta
+                clean_url = str(chap_url).split('#')[0]
+                
+                # Tentar extrair o número do capítulo usando a url limpa
+                match = re.search(r'(?:chapter|capitulo|cap|ch|episode|ep)(?:_no)?(?:[-_=/\s]*)(\d+(?:\.\d+)?)', clean_url, re.IGNORECASE)
                 if match:
                     raw_chap_name = f"Capitulo {match.group(1)}"
                 else:
-                    clean_chap_url = str(chap_url).split('?')[0].strip('/')
+                    clean_chap_url = clean_url.split('?')[0].strip('/')
                     chap_parts = [p for p in clean_chap_url.split('/') if p]
                     if chap_parts and chap_parts[-1] in ('list', 'viewer') and len(chap_parts) > 1:
                         raw_chap_name = chap_parts[-2]
@@ -125,6 +132,105 @@ class DownloaderController(QObject):
         self.download_thread = None
         self.current_groups = {}
 
+        # ── Barra de ações: Selecionar Todos + Intervalo ──────────────────────
+        self.actionBarWidget = QWidget()
+        actionBarLayout = QHBoxLayout(self.actionBarWidget)
+        actionBarLayout.setContentsMargins(0, 2, 0, 2)
+        actionBarLayout.setSpacing(8)
+
+        # Botão Selecionar Todos
+        self.btnSelectAll = QPushButton("Selecionar Todos")
+        self.btnSelectAll.setFixedHeight(26)
+        self.btnSelectAll.clicked.connect(self._select_all_chapters)
+        actionBarLayout.addWidget(self.btnSelectAll)
+
+        # Separador vertical
+        sep = QFrame()
+        sep.setFrameShape(QFrame.Shape.VLine)
+        sep.setFrameShadow(QFrame.Shadow.Sunken)
+        actionBarLayout.addWidget(sep)
+
+        # Intervalo de capítulos
+        actionBarLayout.addWidget(QLabel("Intervalo:"))
+        self.spinFrom = QSpinBox()
+        self.spinFrom.setMinimum(1)
+        self.spinFrom.setMaximum(9999)
+        self.spinFrom.setFixedWidth(65)
+        self.spinFrom.setSpecialValueText("Início")
+        self.spinFrom.setValue(1)
+        actionBarLayout.addWidget(self.spinFrom)
+        actionBarLayout.addWidget(QLabel("até"))
+        self.spinTo = QSpinBox()
+        self.spinTo.setMinimum(1)
+        self.spinTo.setMaximum(9999)
+        self.spinTo.setFixedWidth(65)
+        self.spinTo.setSpecialValueText("Fim")
+        self.spinTo.setValue(9999)
+        actionBarLayout.addWidget(self.spinTo)
+
+        btnApplyRange = QPushButton("Aplicar")
+        btnApplyRange.setFixedHeight(26)
+        btnApplyRange.clicked.connect(self._apply_range)
+        actionBarLayout.addWidget(btnApplyRange)
+
+        actionBarLayout.addStretch()
+
+        # Insere logo abaixo do campo de pasta (índice 2 = após URL e pasta)
+        self.w.downloaderGroupBox.layout().insertWidget(2, self.actionBarWidget)
+
+        # Auto-detect site from URL when user pastes/types in the URL field
+        self.w.dlUrlField.textChanged.connect(self._auto_detect_site)
+
+    def _auto_detect_site(self, url: str):
+        """Detecta o site pela URL e muda o combo de credenciais automaticamente."""
+        url_lower = url.lower()
+        if "piccoma" in url_lower:
+            site = "Piccoma"
+        elif "verdinha" in url_lower or "reaperscans" in url_lower or "greenscans" in url_lower:
+            site = "Verdinha"
+        elif "mediocre" in url_lower or "mediocrescan" in url_lower:
+            site = "Mediocretoons"
+        else:
+            return  # URL não reconhecida — não mexe no combo
+
+        combo = self.w.loginSiteCombo
+        idx = combo.findText(site)
+        if idx >= 0 and combo.currentIndex() != idx:
+            combo.setCurrentIndex(idx)  # Isso vai disparar on_login_site_changed automaticamente
+
+    def _select_all_chapters(self):
+        """Toggle: seleciona todos ou desmarca todos, alternando o label do botão."""
+        count = self.w.dlChapterList.count()
+        all_selected = all(
+            self.w.dlChapterList.item(i).isSelected() for i in range(count)
+        ) if count > 0 else False
+
+        if all_selected:
+            # Desmarcar todos
+            for i in range(count):
+                self.w.dlChapterList.item(i).setSelected(False)
+            self.btnSelectAll.setText("Selecionar Todos")
+        else:
+            # Selecionar todos
+            for i in range(count):
+                self.w.dlChapterList.item(i).setSelected(True)
+            self.btnSelectAll.setText("Desmarcar Todos")
+
+    def _apply_range(self):
+        """Seleciona apenas os capítulos dentro do intervalo definido."""
+        from_num = self.spinFrom.value()
+        to_num = self.spinTo.value()
+        import re
+        for i in range(self.w.dlChapterList.count()):
+            item = self.w.dlChapterList.item(i)
+            # Extrai o número do nome exibido (ex: "Capítulo 5" → 5)
+            m = re.search(r'(\d+(?:\.\d+)?)', item.text())
+            if m:
+                num = float(m.group(1))
+                item.setSelected(from_num <= num <= to_num)
+            else:
+                item.setSelected(False)
+
     def browse_dir(self):
         d = QFileDialog.getExistingDirectory(self.w, "Selecionar Pasta de Downloads", self.w.dlDirField.text())
         if d:
@@ -143,6 +249,7 @@ class DownloaderController(QObject):
         self.dlGroupCombo.clear()
         self.groupWidget.setVisible(False)
         self.w.dlDownloadButton.setEnabled(False)
+        self.btnSelectAll.setText("Selecionar Todos")  # reseta o toggle
         
         self.dlStatusLabel.setVisible(True)
         self.dlStatusLabel.setText("Buscando capítulos...")
@@ -171,6 +278,11 @@ class DownloaderController(QObject):
             self.groupWidget.setVisible(False)
             group_name = list(groups_dict.keys())[0]
             self.dlGroupCombo.addItem(group_name)
+            # Atualiza o spin de intervalo com o total
+            total = len(groups_dict[group_name])
+            self.spinFrom.setValue(1)
+            self.spinTo.setMaximum(max(total, 9999))
+            self.spinTo.setValue(total)
             
         self.w.dlDownloadButton.setEnabled(True)
 
@@ -186,12 +298,15 @@ class DownloaderController(QObject):
         def format_chapter_name(url):
             url_str = str(url).rstrip('/')
             
+            # Remove fragmentos e query strings
+            clean_url = url_str.split('#')[0].split('?')[0]
+            
             # Tentar extrair o número do capítulo a partir de formatações na URL inteira
-            match = re.search(r'(?:chapter|capitulo|cap|ch|episode|ep)(?:_no)?(?:[-_=/\s]*)(\d+(?:\.\d+)?)', url_str, re.IGNORECASE)
+            match = re.search(r'(?:chapter|capitulo|cap|ch|episode|ep)(?:_no)?(?:[-_=/\s]*)(\d+(?:\.\d+)?)', clean_url, re.IGNORECASE)
             if match:
                 return f"Capítulo {match.group(1)}"
                 
-            basename = url_str.split('?')[0].split('/')[-1]
+            basename = clean_url.split('/')[-1]
                 
             # Se a string inteira for só um número
             match = re.search(r'^(\d+(?:\.\d+)?)$', basename)

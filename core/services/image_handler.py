@@ -6,6 +6,7 @@ from multiprocessing import cpu_count
 
 from PIL import Image as pil
 from PIL import UnidentifiedImageError
+import pillow_avif
 from psd_tools import PSDImage
 
 from ..models import WorkDirectory

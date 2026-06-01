@@ -20,6 +20,7 @@ SUPPORTED_IMG_TYPES = (
     '.tga',
     '.psd',
     '.psb',
+    '.avif',
 )
 
 PHOTOSHOP_FILE_TYPES = (

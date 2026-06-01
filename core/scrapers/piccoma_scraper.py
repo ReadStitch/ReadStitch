@@ -1,4 +1,4 @@
-import os
+﻿import os
 import re
 import io
 import urllib.parse
@@ -48,7 +48,7 @@ class PiccomaScraper(BaseScraper):
         password = settings.load("piccoma_password")
             
         if not email or not password:
-            print("Email ou senha vazios nas configurações de Login do Piccoma!")
+            print("Email ou senha vazios nas configuraÃ§Ãµes de Login do Piccoma!")
             self._login_failed = True
             return
 
@@ -251,3 +251,5 @@ class PiccomaScraper(BaseScraper):
         else:
             with open(output_path, 'wb') as f:
                 f.write(img_bytes)
+
+

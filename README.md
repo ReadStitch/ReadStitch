@@ -33,6 +33,8 @@ Combinando o melhor dos dois mundos, o ReadStitch entrega uma pipeline completa 
 ### 📥 Download de Raws
 Baixe capítulos diretamente dos principais sites de leitura:
 
+#### 🌐 Sites em Inglês (EN)
+
 | Site | Suporte |
 |---|---|
 | [Asura Scans](https://asuracomic.net) | ✅ |
@@ -42,7 +44,16 @@ Baixe capítulos diretamente dos principais sites de leitura:
 | [QisManga](https://qismanga.com) | ✅ |
 | [Comix](https://comix.jp) | ✅ |
 | [Vortex Scans](https://vortexscans.org) | ✅ |
-| [Piccoma](https://piccoma.com) | ✅ |
+| [Piccoma](https://piccoma.com) | ✅ *(requer login)* |
+
+#### 🇧🇷 Sites em Português (BR)
+
+| Site | Suporte |
+|---|---|
+| [Verdinha / Reaper Scans BR](https://reaperscans.com.br) | ✅ *(requer login)* |
+| [Mediocretoons / MediocreScan](https://mediocrescan.com) | ✅ *(requer login)* |
+
+> 💡 **Sites com login** exigem que você informe suas credenciais na aba **Baixador → Credenciais de Acesso**. O site é detectado automaticamente pela URL colada — não é necessário selecionar manualmente!
 
 > 💡 **Quer pedir suporte para um novo site?** [Abra uma Issue](https://github.com/devjohnatas/ReadStitch/issues) descrevendo o site e ela será avaliada!
 
@@ -77,13 +88,23 @@ Baseado no **Waifu2x-Extension-GUI**, o ReadStitch aplica upscaling de imagens c
 
 ### Rodando via Código-fonte
 1. Instale o Python 3.11 ou superior.
-2. Clone o repositório e instale as dependências:
+2. Clone o repositório, crie um ambiente virtual e instale as dependências:
    ```bash
    git clone https://github.com/devjohnatas/ReadStitch.git
    cd ReadStitch
+   
+   # Crie o ambiente virtual
+   python -m venv venv
+   
+   # Ative o ambiente virtual (Windows PowerShell)
+   .\venv\Scripts\activate
+   # Ou ative o ambiente virtual (Linux/Mac)
+   # source venv/bin/activate
+   
+   # Instale as dependências
    pip install -r requirements.txt
    ```
-3. Execute o programa:
+3. Execute o programa (com o ambiente virtual ativo):
    ```bash
    # Interface gráfica
    python ReadStitchGUI.py

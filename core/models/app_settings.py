@@ -34,6 +34,12 @@ class AppSettings:
     download_dir: str = "C:/Manhwa/Downloads"
     piccoma_email: str = ""
     piccoma_password: str = ""
+    verdinha_email: str = ""
+    verdinha_password: str = ""
+    mediocre_email: str = ""
+    mediocre_password: str = ""
+
+    gemini_api_key: str = ""
 
     # Watermark Settings - Fullpage
     watermark_fullpage_enabled: bool = False

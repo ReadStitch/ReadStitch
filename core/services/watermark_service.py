@@ -7,6 +7,7 @@ from typing import Any, Callable, List, Optional, Tuple
 
 import numpy as np
 from PIL import Image, ImageStat
+import pillow_avif
 
 from core.services.global_logger import logFunc
 
@@ -871,7 +872,7 @@ class WatermarkService:
         
         images = sorted([
             f for f in os.listdir(chapter_path) 
-            if f.lower().endswith((".png", ".jpg", ".jpeg", ".webp"))
+            if f.lower().endswith((".png", ".jpg", ".jpeg", ".webp", ".avif"))
         ])
         
         if not images:

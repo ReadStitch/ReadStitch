@@ -409,8 +409,19 @@ def _on_load() -> None:
     _main_window.heightField.setValue(_settings.load("split_height"))
     _main_window.runProcessCheckbox.setChecked(_settings.load("run_postprocess"))
     _main_window.runComicZipCheckbox.setChecked(_settings.load("run_comiczip"))
-    _main_window.piccomaEmailInput.setText(_settings.load("piccoma_email"))
-    _main_window.piccomaPassInput.setText(_settings.load("piccoma_password"))
+    def on_login_site_changed(text):
+        if text == "Piccoma":
+            _main_window.loginEmailInput.setText(_settings.load("piccoma_email"))
+            _main_window.loginPassInput.setText(_settings.load("piccoma_password"))
+        elif text == "Verdinha":
+            _main_window.loginEmailInput.setText(_settings.load("verdinha_email"))
+            _main_window.loginPassInput.setText(_settings.load("verdinha_password"))
+        elif text == "Mediocretoons":
+            _main_window.loginEmailInput.setText(_settings.load("mediocre_email"))
+            _main_window.loginPassInput.setText(_settings.load("mediocre_password"))
+
+    _main_window.loginSiteCombo.currentTextChanged.connect(on_login_site_changed)
+    on_login_site_changed(_main_window.loginSiteCombo.currentText())
     _main_window.parallelProcessingCheckbox.setChecked(
         _settings.load("parallel_processing")
     )
@@ -452,12 +463,39 @@ def _bind_signals() -> None:
     w.runComicZipCheckbox.stateChanged.connect(
         lambda: _settings.save("run_comiczip", w.runComicZipCheckbox.isChecked())
     )
-    w.piccomaEmailInput.textChanged.connect(
-        lambda text: _settings.save("piccoma_email", text)
-    )
-    w.piccomaPassInput.textChanged.connect(
-        lambda text: _settings.save("piccoma_password", text)
-    )
+    def on_login_site_changed(text):
+        if text == "Piccoma":
+            _main_window.loginEmailInput.setText(_settings.load("piccoma_email"))
+            _main_window.loginPassInput.setText(_settings.load("piccoma_password"))
+        elif text == "Verdinha":
+            _main_window.loginEmailInput.setText(_settings.load("verdinha_email"))
+            _main_window.loginPassInput.setText(_settings.load("verdinha_password"))
+        elif text == "Mediocretoons":
+            _main_window.loginEmailInput.setText(_settings.load("mediocre_email"))
+            _main_window.loginPassInput.setText(_settings.load("mediocre_password"))
+
+    w.loginSiteCombo.currentTextChanged.connect(on_login_site_changed)
+
+    def on_login_email_changed(text):
+        site = w.loginSiteCombo.currentText()
+        if site == "Piccoma":
+            _settings.save("piccoma_email", text)
+        elif site == "Verdinha":
+            _settings.save("verdinha_email", text)
+        elif site == "Mediocretoons":
+            _settings.save("mediocre_email", text)
+
+    def on_login_pass_changed(text):
+        site = w.loginSiteCombo.currentText()
+        if site == "Piccoma":
+            _settings.save("piccoma_password", text)
+        elif site == "Verdinha":
+            _settings.save("verdinha_password", text)
+        elif site == "Mediocretoons":
+            _settings.save("mediocre_password", text)
+
+    w.loginEmailInput.textChanged.connect(on_login_email_changed)
+    w.loginPassInput.textChanged.connect(on_login_pass_changed)
     w.parallelProcessingCheckbox.stateChanged.connect(
         lambda: _settings.save("parallel_processing", w.parallelProcessingCheckbox.isChecked())
     )

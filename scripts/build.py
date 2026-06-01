@@ -78,6 +78,7 @@ def main() -> None:
         "psd_tools",
         "natsort",
         "backports.tarfile",
+        "pillow_avif",
     ]
 
     args: list[str] = [
