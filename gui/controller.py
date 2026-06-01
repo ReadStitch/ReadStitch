@@ -930,6 +930,7 @@ def _run_external_updater(*, staged_dir: str, payload_dir: str, app_dir: str, ex
     updater_cmd = os.path.join(staged_dir, "apply_update.cmd")
     current_pid = os.getpid()
 
+    log_file = os.path.join(app_dir, "updater.log")
     lines = [
         "@echo off",
         "setlocal",
@@ -938,31 +939,36 @@ def _run_external_updater(*, staged_dir: str, payload_dir: str, app_dir: str, ex
         f"set PAYLOAD_DIR={payload_dir}",
         f"set APP_DIR={app_dir}",
         f"set EXE_NAME={exe_name}",
-        "echo Aguardando app fechar...",
+        f"set LOG_FILE={log_file}",
+        "echo Iniciando atualizacao... > \"%LOG_FILE%\"",
+        "echo Aguardando app fechar... >> \"%LOG_FILE%\"",
         ":wait_loop",
         'tasklist /FI "PID eq %TARGET_PID%" | findstr /I "%TARGET_PID%" >nul',
         "if %ERRORLEVEL%==0 (",
         "  timeout /t 1 /nobreak >nul",
         "  goto wait_loop",
         ")",
-        "echo Aplicando arquivos de atualizacao...",
-        'robocopy "%PAYLOAD_DIR%" "%APP_DIR%" /E /R:10 /W:2 /NP',
+        "echo Aplicando arquivos de atualizacao... >> \"%LOG_FILE%\"",
+        'robocopy "%PAYLOAD_DIR%" "%APP_DIR%" /E /R:10 /W:2 /NP >> \"%LOG_FILE%\" 2>&1',
         "if %ERRORLEVEL% GEQ 8 (",
-        "  echo Erro ao copiar arquivos. Iniciando versao anterior...",
+        "  echo Erro ao copiar arquivos. Iniciando versao anterior... >> \"%LOG_FILE%\"",
         "  goto start_old",
         ")",
-        "echo Atualizacao concluida! Iniciando novo version...",
+        "echo Atualizacao concluida! Iniciando nova versao... >> \"%LOG_FILE%\"",
         'if exist "%APP_DIR%\\%EXE_NAME%" (',
+        '  echo Executando: start "" "%APP_DIR%\\%EXE_NAME%" >> \"%LOG_FILE%\"',
         '  start \"\" \"%APP_DIR%\\%EXE_NAME%\"',
+        ") else (",
+        '  echo Erro: Executavel "%APP_DIR%\\%EXE_NAME%" nao encontrado! >> \"%LOG_FILE%\"',
         ")",
         "goto cleanup",
         ":start_old",
         'if exist "%APP_DIR%\\%EXE_NAME%" start "" "%APP_DIR%\\%EXE_NAME%"',
         ":cleanup",
-        "echo Limpando arquivos temporarios...",
+        "echo Limpando arquivos temporarios... >> \"%LOG_FILE%\"",
         'timeout /t 2 /nobreak >nul',
         'rmdir /s /q "%STAGED_DIR%" 2>nul',
-        "echo Atualizacao finalizada.",
+        "echo Atualizacao finalizada. >> \"%LOG_FILE%\"",
     ]
     with open(updater_cmd, "w", encoding="utf-8", newline="\r\n") as f:
         f.write("\r\n".join(lines) + "\r\n")
@@ -971,6 +977,9 @@ def _run_external_updater(*, staged_dir: str, payload_dir: str, app_dir: str, ex
         ["cmd", "/c", updater_cmd],
         creationflags=getattr(subprocess, "DETACHED_PROCESS", 0)
         | getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0),
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
         close_fds=True,
     )
 
