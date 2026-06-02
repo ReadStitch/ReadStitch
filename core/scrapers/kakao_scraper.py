@@ -11,6 +11,9 @@ class KakaoScraper(BaseScraper):
         return {"Padrão": self.get_chapters(series_url, progress_callback=progress_callback)}
         
     def get_chapters(self, series_url, progress_callback=None):
+        if not series_url.startswith('http'):
+            series_url = 'https://' + series_url
+            
         if "viewer=" in series_url or "/viewer/" in series_url:
             return [series_url]
             

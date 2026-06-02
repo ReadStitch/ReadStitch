@@ -1065,8 +1065,9 @@ def _check_for_updates(*, silent_if_latest: bool = False, auto_update: bool = Fa
             subprocess.check_call(["git", "fetch"], cwd=_PROJECT_ROOT, timeout=10, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             local_hash = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=_PROJECT_ROOT, text=True).strip()
             upstream_hash = subprocess.check_output(["git", "rev-parse", "@{u}"], cwd=_PROJECT_ROOT, text=True).strip()
+            merge_base = subprocess.check_output(["git", "merge-base", "HEAD", "@{u}"], cwd=_PROJECT_ROOT, text=True).strip()
             
-            if local_hash != upstream_hash:
+            if local_hash != upstream_hash and merge_base != upstream_hash:
                 if auto_update:
                     subprocess.check_call(["git", "reset", "--hard", "HEAD"], cwd=_PROJECT_ROOT, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
                     subprocess.check_call(["git", "pull"], cwd=_PROJECT_ROOT, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)

@@ -1,4 +1,4 @@
-﻿import os
+import os
 import re
 import io
 import urllib.parse
@@ -70,6 +70,9 @@ class PiccomaScraper(BaseScraper):
     def get_chapters(self, series_url):
         from playwright_stealth import Stealth
         
+        if not series_url.startswith('http'):
+            series_url = 'https://' + series_url
+            
         # Support direct chapter link
         if '/viewer/' in series_url:
             return [series_url]
@@ -220,8 +223,14 @@ class PiccomaScraper(BaseScraper):
                 
             script_content = pdata_script[0]
             
-            pattern = r"(?<=:')[^']+(?=')"
-            images = ["https:" + image for image in re.findall(pattern, script_content) if image.startswith("//")]
+            # Extract strictly the 'path' key to avoid capturing blurry thumbnails
+            pattern = r"(?:\"path\"|path|'path')\s*:\s*['\"](//[^'\"]+)['\"]"
+            images = ["https:" + image for image in re.findall(pattern, script_content)]
+            
+            # Fallback if no images found, filtering out common thumbnail keywords
+            if not images:
+                pattern_fallback = r"(?<=:')[^']+(?=')"
+                images = ["https:" + img for img in re.findall(pattern_fallback, script_content) if img.startswith("//") and "thumb" not in img.lower() and "blur" not in img.lower()]
             
         return images
 
@@ -253,5 +262,31 @@ class PiccomaScraper(BaseScraper):
         else:
             with open(output_path, 'wb') as f:
                 f.write(img_bytes)
+
+    def download_chapter(self, chapter_url, output_dir, chapter_name, max_workers=5):
+        target_dir = os.path.join(output_dir, chapter_name)
+        os.makedirs(target_dir, exist_ok=True)
+        
+        images = self.get_chapter_images(chapter_url)
+        if not images:
+            return 0
+            
+        def _download(args):
+            idx, url = args
+            filepath = os.path.join(target_dir, f"{idx+1:03d}.jpg")
+            if not os.path.exists(filepath):
+                try:
+                    self.download_image(url, filepath)
+                except Exception as e:
+                    import logging
+                    logging.getLogger(__name__).error(f"Erro ao baixar {url}: {e}")
+                    return None
+            return filepath
+            
+        import concurrent.futures
+        with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+            list(executor.map(_download, enumerate(images)))
+            
+        return len(images)
 
 

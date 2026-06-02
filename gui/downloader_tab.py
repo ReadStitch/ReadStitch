@@ -58,17 +58,27 @@ class DownloadThread(QThread):
                 # Remove fragmentos para nomeação correta
                 clean_url = str(chap_url).split('#')[0]
                 
-                # Tentar extrair o número do capítulo usando a url limpa
-                match = re.search(r'(?:chapter|capitulo|cap|ch|episode|ep)(?:_no)?(?:[-_=/\s]*)(\d+(?:\.\d+)?)', clean_url, re.IGNORECASE)
-                if match:
-                    raw_chap_name = f"Capitulo {match.group(1)}"
+                # Tentar pegar do parametro '?chapter=X' explicitamente
+                import urllib.parse as urlparse
+                parsed = urlparse.urlparse(clean_url)
+                qs = urlparse.parse_qs(parsed.query)
+                if 'chapter' in qs:
+                    raw_chap_name = f"Capitulo {qs['chapter'][0]}"
+                elif 'cap' in qs:
+                    raw_chap_name = f"Capitulo {qs['cap'][0]}"
                 else:
-                    clean_chap_url = clean_url.split('?')[0].strip('/')
-                    chap_parts = [p for p in clean_chap_url.split('/') if p]
-                    if chap_parts and chap_parts[-1] in ('list', 'viewer') and len(chap_parts) > 1:
-                        raw_chap_name = chap_parts[-2]
+                    # Tentar extrair o número do capítulo usando a url limpa
+                    match = re.search(r'(?:chapter|capitulo|cap|ch|episode|ep)(?:_no)?(?:[-_=/\s]*)(\d+(?:\.\d+)?)', clean_url, re.IGNORECASE)
+                    if match:
+                        raw_chap_name = f"Capitulo {match.group(1)}"
                     else:
-                        raw_chap_name = chap_parts[-1] if chap_parts else f"Capitulo_{i+1}"
+                        basename = clean_url.split('?')[0].split('/')[-1]
+                        match = re.search(r'^(\d+(?:\.\d+)?)$', basename)
+                        if match:
+                            raw_chap_name = f"Capitulo {match.group(1)}"
+                        else:
+                            chap_parts = [p for p in clean_url.split('/') if p]
+                            raw_chap_name = chap_parts[-1] if chap_parts else f"Capitulo_{i+1}"
                 
                 chap_name = re.sub(r'[\\/:*?"<>|]', '_', raw_chap_name)
                 last_chap_name = chap_name
@@ -296,17 +306,26 @@ class DownloaderController(QObject):
         
         import re
         def format_chapter_name(url):
+            import urllib.parse as urlparse
             url_str = str(url).rstrip('/')
             
-            # Remove fragmentos e query strings
-            clean_url = url_str.split('#')[0].split('?')[0]
+            # Remove fragmentos
+            clean_url = url_str.split('#')[0]
             
-            # Tentar extrair o número do capítulo a partir de formatações na URL inteira
+            # Tenta pegar do parametro '?chapter=X' explicitamente
+            parsed = urlparse.urlparse(clean_url)
+            qs = urlparse.parse_qs(parsed.query)
+            if 'chapter' in qs:
+                return f"Capítulo {qs['chapter'][0]}"
+            if 'cap' in qs:
+                return f"Capítulo {qs['cap'][0]}"
+            
+            # Tentar extrair o número do capítulo a partir de formatações na URL inteira (incluindo query)
             match = re.search(r'(?:chapter|capitulo|cap|ch|episode|ep)(?:_no)?(?:[-_=/\s]*)(\d+(?:\.\d+)?)', clean_url, re.IGNORECASE)
             if match:
                 return f"Capítulo {match.group(1)}"
                 
-            basename = clean_url.split('/')[-1]
+            basename = clean_url.split('?')[0].split('/')[-1]
                 
             # Se a string inteira for só um número
             match = re.search(r'^(\d+(?:\.\d+)?)$', basename)

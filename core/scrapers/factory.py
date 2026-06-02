@@ -9,6 +9,8 @@ from .piccoma_scraper import PiccomaScraper
 from .apecomics_scraper import ApeComicsScraper
 from .plumacomics_scraper import PlumaComicsScraper
 from .lycantoons_scraper import LycanToonsScraper
+from .genz_scraper import GenzScraper
+from .naver_scraper import NaverScraper
 
 from .geasscomics_scraper import GeassComicsScraper
 
@@ -34,7 +36,7 @@ def get_scraper_for_url(url):
         return UtoonScraper()
     elif 'qimanhwa.com' in url_lower:
         return QiScraper()
-    elif 'vortexscans.org' in url_lower:
+    elif 'vortexscans.org' in url_lower or 'hivetoons.org' in url_lower:
         return VortexScraper()
     elif 'comix.to' in url_lower or 'comick' in url_lower:
         return ComixScraper()
@@ -50,6 +52,10 @@ def get_scraper_for_url(url):
         return GeassComicsScraper()
     elif 'inkapk' in url_lower:
         return InkapkScraper()
+    elif 'genztoons.org' in url_lower:
+        return GenzScraper()
+    elif 'comic.naver.com' in url_lower:
+        return NaverScraper()
     elif 'nx-toons' in url_lower or 'nexus' in url_lower:
         return NexusScraper()
     elif 'vegitoons' in url_lower:
@@ -62,5 +68,11 @@ def get_scraper_for_url(url):
         return MediocreScraper()
     elif 'kagane.org' in url_lower or 'kagane' in url_lower:
         return KaganeScraper()
+    elif 'flamecomics' in url_lower:
+        from .flamecomics_scraper import FlameComicsScraper
+        return FlameComicsScraper()
+    elif 'reset-scans.org' in url_lower or 'resetscans' in url_lower:
+        from .resetscans_scraper import ResetScansScraper
+        return ResetScansScraper()
     # Default to Asura
     return AsuraScraper()

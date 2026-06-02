@@ -30,11 +30,12 @@ class VortexScraper(BaseScraper):
         pattern2 = r'href=[\'\"](/series/[^\'\"]+/(?:chapter|ch)-?[0-9\.]+)[\'\"]'
         
         links = re.findall(pattern2, html)
+        domain = "hivetoons.org" if "hivetoons.org" in series_url else "vortexscans.org"
         
         chapters = set()
         for href in links:
             if slug in href:
-                full_url = f"https://vortexscans.org{href}" if href.startswith('/') else href
+                full_url = f"https://{domain}{href}" if href.startswith('/') else href
                 chapters.add(full_url)
                 
         def get_chap_num(url):
@@ -50,13 +51,12 @@ class VortexScraper(BaseScraper):
     def get_chapter_images(self, chapter_url: str) -> list[str]:
         html = self._fetch_html(chapter_url)
         
-        # Vortex usa tags do tipo <meta itemprop="image" content="...">
-        # Também podemos pegar as imagens do leitor se tiver class
+        # Vortex/Hivetoons usa tags do tipo <meta itemprop="image" content="...">
         images = re.findall(r'<meta itemprop=[\'\"]image[\'\"] content=[\'\"](https://[^\'\"]+(?:jpg|jpeg|png|webp))[\'\"]', html)
         
         if not images:
             # Fallback para imgs genéricas caso mudem o HTML
-            images = re.findall(r'src=[\'\"](https://storage\.vortexscans\.org/upload/[^\'\"]+(?:jpg|jpeg|png|webp))[\'\"]', html)
+            images = re.findall(r'src=[\'\"](https://storage\.[^\'\"]+(?:jpg|jpeg|png|webp))[\'\"]', html)
             
         if not images:
             raise Exception("Nenhuma imagem encontrada no capítulo Vortex.")
