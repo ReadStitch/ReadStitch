@@ -97,6 +97,8 @@ def main() -> None:
         str(work_dir),
         "--specpath",
         str(work_dir),
+        "--collect-data",
+        "playwright_stealth",
         # Optimization: bytecode optimization (removes assertions + docstrings, ~10% size reduction)
         "--optimize",
         "2",
