@@ -81,6 +81,7 @@ class PiccomaScraper(BaseScraper):
         chapters = []
         with sync_playwright() as p:
             browser = p.chromium.launch(
+                channel="msedge",
                 headless=False,
                 args=['--disable-blink-features=AutomationControlled'],
                 ignore_default_args=['--enable-automation']
@@ -148,6 +149,7 @@ class PiccomaScraper(BaseScraper):
         images = []
         with sync_playwright() as p:
             browser = p.chromium.launch(
+                channel="msedge",
                 headless=False,
                 args=['--disable-blink-features=AutomationControlled'],
                 ignore_default_args=['--enable-automation']

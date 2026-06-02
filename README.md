@@ -49,6 +49,7 @@ Baixe capítulos diretamente dos principais sites de leitura:
 | [Comix](https://comix.jp) | ✅ |
 | [Vortex Scans](https://vortexscans.org) | ✅ |
 | [Piccoma](https://piccoma.com) | ✅ *(login)* |
+| [Kagane](https://kagane.org) | ✅ |
 
 </td>
 <td valign="top">

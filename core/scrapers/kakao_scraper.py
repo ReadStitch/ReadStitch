@@ -16,7 +16,7 @@ class KakaoScraper(BaseScraper):
             
         chapters = []
         with sync_playwright() as p:
-            browser = p.chromium.launch(headless=True)
+            browser = p.chromium.launch(channel="msedge", headless=True)
             page = browser.new_page()
             page.set_extra_http_headers({"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"})
             
@@ -105,7 +105,7 @@ class KakaoScraper(BaseScraper):
     def get_chapter_images(self, chapter_url):
         images = []
         with sync_playwright() as p:
-            browser = p.chromium.launch(headless=True)
+            browser = p.chromium.launch(channel="msedge", headless=True)
             page = browser.new_page()
             
             page.set_extra_http_headers({"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"})

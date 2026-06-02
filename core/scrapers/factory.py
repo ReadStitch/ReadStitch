@@ -22,6 +22,7 @@ from .hipercool_scraper import HipercoolScraper
 
 from .verdinha_scraper import VerdinhaScraper
 from .mediocre_scraper import MediocreScraper
+from .kagane_scraper import KaganeScraper
 
 def get_scraper_for_url(url):
     url_lower = url.lower()
@@ -59,5 +60,7 @@ def get_scraper_for_url(url):
         return VerdinhaScraper()
     elif 'mediocrescan.com' in url_lower or 'mediocre' in url_lower:
         return MediocreScraper()
+    elif 'kagane.org' in url_lower or 'kagane' in url_lower:
+        return KaganeScraper()
     # Default to Asura
     return AsuraScraper()

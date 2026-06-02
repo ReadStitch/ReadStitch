@@ -19,6 +19,7 @@ class UtoonScraper(BaseScraper):
             with sync_playwright() as p:
                 context = p.chromium.launch_persistent_context(
                     user_data_dir=profile_dir,
+                    channel="msedge",
                     headless=headless,
                     viewport={"width": 1280, "height": 720},
                     user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/131.0.0.0"
