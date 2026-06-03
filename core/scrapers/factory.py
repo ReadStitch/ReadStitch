@@ -13,6 +13,8 @@ from .genz_scraper import GenzScraper
 from .naver_scraper import NaverScraper
 from .tapas_scraper import TapasScraper
 from .roliascan_scraper import RoliascanScraper
+from .mangadex_scraper import MangadexScraper
+from .astratoons_scraper import AstratoonsScraper
 
 from .geasscomics_scraper import GeassComicsScraper
 
@@ -58,6 +60,10 @@ def get_scraper_for_url(url):
         return TapasScraper()
     elif 'roliascan' in url_lower:
         return RoliascanScraper()
+    elif 'mangadex.org' in url_lower or 'mangadex' in url_lower:
+        return MangadexScraper()
+    elif 'astratoons.com' in url_lower or 'astratoons' in url_lower:
+        return AstratoonsScraper()
     elif 'genztoons.org' in url_lower:
         return GenzScraper()
     elif 'comic.naver.com' in url_lower:

@@ -57,6 +57,7 @@ Baixe capítulos diretamente dos principais sites de leitura:
 | [RoliaScan](https://roliascan.com) | ✅ |
 | [FlameComics](https://flamecomics.com) | ✅ |
 | [ResetScans](https://reset-scans.org) | ✅ |
+| [MangaDex](https://mangadex.org) | ✅ |
 
 </td>
 <td valign="top">
@@ -75,6 +76,7 @@ Baixe capítulos diretamente dos principais sites de leitura:
 | Nexus | ✅ |
 | Hipercool | ✅ |
 | Vegitoons | ✅ |
+| Astratoons | ✅ |
 
 </td>
 </tr>

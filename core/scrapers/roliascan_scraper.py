@@ -14,7 +14,7 @@ class RoliascanScraper(BaseScraper):
         chapters = []
         
         with sync_playwright() as p:
-            browser = p.chromium.launch(headless=True)
+            browser = p.chromium.launch(channel="msedge", headless=True)
             page = browser.new_page()
             
             # Bloquear resources inúteis para agilizar o carregamento
@@ -78,7 +78,7 @@ class RoliascanScraper(BaseScraper):
         images = []
         
         with sync_playwright() as p:
-            browser = p.chromium.launch(headless=True)
+            browser = p.chromium.launch(channel="msedge", headless=True)
             page = browser.new_page()
             
             # Não bloquear imagens aqui, pois precisamos que os data-src carreguem, 
