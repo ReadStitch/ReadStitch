@@ -6,6 +6,7 @@ import subprocess
 import sys
 import tempfile
 import time
+import urllib.error
 import urllib.request
 import webbrowser
 import zipfile
@@ -409,6 +410,7 @@ def _on_load() -> None:
     _main_window.heightField.setValue(_settings.load("split_height"))
     _main_window.runProcessCheckbox.setChecked(_settings.load("run_postprocess"))
     _main_window.runComicZipCheckbox.setChecked(_settings.load("run_comiczip"))
+    _main_window.loginSiteCombo.setCurrentText(_settings.load("last_login_site"))
     def on_login_site_changed(text):
         if text == "Piccoma":
             _main_window.loginEmailInput.setText(_settings.load("piccoma_email"))
@@ -420,7 +422,6 @@ def _on_load() -> None:
             _main_window.loginEmailInput.setText(_settings.load("mediocre_email"))
             _main_window.loginPassInput.setText(_settings.load("mediocre_password"))
 
-    _main_window.loginSiteCombo.currentTextChanged.connect(on_login_site_changed)
     on_login_site_changed(_main_window.loginSiteCombo.currentText())
     _main_window.parallelProcessingCheckbox.setChecked(
         _settings.load("parallel_processing")
@@ -464,6 +465,7 @@ def _bind_signals() -> None:
         lambda: _settings.save("run_comiczip", w.runComicZipCheckbox.isChecked())
     )
     def on_login_site_changed(text):
+        _settings.save("last_login_site", text)
         if text == "Piccoma":
             _main_window.loginEmailInput.setText(_settings.load("piccoma_email"))
             _main_window.loginPassInput.setText(_settings.load("piccoma_password"))
@@ -877,33 +879,56 @@ def _download_file(
     url: str,
     target_path: str,
     progress_callback: Callable[[int, int], None] | None = None,
+    max_retries: int = 3,
 ) -> None:
-    request = urllib.request.Request(
-        url,
-        headers={
-            "Accept": "application/octet-stream",
-            "User-Agent": APP_NAME,
-        },
-    )
-    with urllib.request.urlopen(request, timeout=60) as response:
-        total_bytes = 0
-        content_length = response.headers.get("Content-Length")
-        if content_length:
-            try:
-                total_bytes = int(content_length)
-            except (TypeError, ValueError):
+    last_exc: Exception | None = None
+    for attempt in range(max_retries + 1):
+        try:
+            request = urllib.request.Request(
+                url,
+                headers={
+                    "Accept": "application/octet-stream",
+                    "User-Agent": APP_NAME,
+                },
+            )
+            with urllib.request.urlopen(request, timeout=60) as response:
                 total_bytes = 0
+                content_length = response.headers.get("Content-Length")
+                if content_length:
+                    try:
+                        total_bytes = int(content_length)
+                    except (TypeError, ValueError):
+                        total_bytes = 0
 
-        bytes_read = 0
-        with open(target_path, "wb") as out:
-            while True:
-                chunk = response.read(1024 * 256)
-                if not chunk:
-                    break
-                out.write(chunk)
-                bytes_read += len(chunk)
+                bytes_read = 0
+                with open(target_path, "wb") as out:
+                    while True:
+                        chunk = response.read(1024 * 256)
+                        if not chunk:
+                            break
+                        out.write(chunk)
+                        bytes_read += len(chunk)
+                        if progress_callback:
+                            progress_callback(bytes_read, total_bytes)
+            return  # success
+        except urllib.error.HTTPError as exc:
+            last_exc = exc
+            if exc.code in (404, 502, 503) and attempt < max_retries:
+                wait = 5 * (attempt + 1)  # 5s, 10s, 15s
                 if progress_callback:
-                    progress_callback(bytes_read, total_bytes)
+                    progress_callback(-1, -1)
+                time.sleep(wait)
+                continue
+            raise
+        except (urllib.error.URLError, TimeoutError, OSError) as exc:
+            last_exc = exc
+            if attempt < max_retries:
+                wait = 5 * (attempt + 1)
+                time.sleep(wait)
+                continue
+            raise
+    if last_exc:
+        raise last_exc
 
 
 def _resolve_payload_dir(payload_dir: str, exe_name: str) -> str:
@@ -1012,6 +1037,14 @@ def _self_update_from_release(release_data: dict) -> tuple[bool, str]:
     progress.show()
 
     def _on_progress(received: int, total: int) -> None:
+        if received == -1 and total == -1:
+            # Retry signal from _download_file
+            progress.setRange(0, 0)
+            progress.setLabelText(
+                "Arquivo ainda não disponível no servidor. Tentando novamente..."
+            )
+            QApplication.processEvents()
+            return
         if total > 0:
             scaled = int((received / total) * 1000)
             progress.setRange(0, 1000)
@@ -1041,6 +1074,15 @@ def _self_update_from_release(release_data: dict) -> tuple[bool, str]:
             raise FileNotFoundError(
                 f"Executavel '{exe_name}' nao encontrado no pacote de atualizacao."
             )
+    except urllib.error.HTTPError as exc:
+        progress.close()
+        shutil.rmtree(update_root, ignore_errors=True)
+        if exc.code == 404:
+            return False, (
+                "O arquivo de atualização ainda não está disponível no servidor.\n"
+                "O build pode estar em andamento. Tente novamente em alguns minutos."
+            )
+        return False, f"Falha ao baixar a atualizacao (HTTP {exc.code}): {exc}"
     except Exception as exc:
         progress.close()
         shutil.rmtree(update_root, ignore_errors=True)

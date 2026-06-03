@@ -38,6 +38,7 @@ class AppSettings:
     verdinha_password: str = ""
     mediocre_email: str = ""
     mediocre_password: str = ""
+    last_login_site: str = "Piccoma"
 
     gemini_api_key: str = ""
 
