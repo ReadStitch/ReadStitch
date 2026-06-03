@@ -183,12 +183,14 @@ class PiccomaScraper(BaseScraper):
                         # Scroll into view and force click via JS
                         el.evaluate("node => { node.scrollIntoView(); node.click(); }")
                     page.wait_for_load_state("networkidle", timeout=5000)
+                    page.wait_for_timeout(2000) # Give modal time to animate
                 except:
                     pass
                 
                 # Check if the modal appeared
                 try:
-                    btn = page.query_selector('.btn-waitfree')
+                    # Piccoma recently updated their CSS classes to use PCM- prefix
+                    btn = page.query_selector('.btn-waitfree, [class*="waitfree" i], [class*="WaitFree"], [class*="PCM-btn"]')
                     if btn:
                         btn.evaluate("node => node.click()")
                         page.wait_for_load_state("networkidle", timeout=10000)

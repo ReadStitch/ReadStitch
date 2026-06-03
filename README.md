@@ -48,8 +48,15 @@ Baixe capítulos diretamente dos principais sites de leitura:
 | [QisManga](https://qismanga.com) | ✅ |
 | [Comix](https://comix.jp) | ✅ |
 | [Vortex Scans](https://vortexscans.org) | ✅ |
+| [HiveToons](https://hivetoons.org) | ✅ |
 | [Piccoma](https://piccoma.com) | ✅ *(login)* |
 | [Kagane](https://kagane.org) | ✅ |
+| [Utoon](https://utoon.net) | ✅ |
+| [GenzToons](https://genztoons.org) | ✅ |
+| [Tapas](https://tapas.io) | ✅ |
+| [RoliaScan](https://roliascan.com) | ✅ |
+| [FlameComics](https://flamecomics.com) | ✅ |
+| [ResetScans](https://reset-scans.org) | ✅ |
 
 </td>
 <td valign="top">

@@ -11,6 +11,8 @@ from .plumacomics_scraper import PlumaComicsScraper
 from .lycantoons_scraper import LycanToonsScraper
 from .genz_scraper import GenzScraper
 from .naver_scraper import NaverScraper
+from .tapas_scraper import TapasScraper
+from .roliascan_scraper import RoliascanScraper
 
 from .geasscomics_scraper import GeassComicsScraper
 
@@ -52,6 +54,10 @@ def get_scraper_for_url(url):
         return GeassComicsScraper()
     elif 'inkapk' in url_lower:
         return InkapkScraper()
+    elif 'tapas.io' in url_lower:
+        return TapasScraper()
+    elif 'roliascan' in url_lower:
+        return RoliascanScraper()
     elif 'genztoons.org' in url_lower:
         return GenzScraper()
     elif 'comic.naver.com' in url_lower:

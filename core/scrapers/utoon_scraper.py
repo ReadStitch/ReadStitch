@@ -8,77 +8,122 @@ class UtoonScraper(BaseScraper):
     def __init__(self):
         super().__init__()
 
-    def _get_page_content_with_playwright(self, url: str, wait_selector: str = None) -> str:
-        from playwright.sync_api import sync_playwright
-        from playwright_stealth import Stealth
+    def _launch_chrome_cdp(self, profile_dir, headless=False):
+        import subprocess
+        import time
+        import os
         
-        profile_dir = os.path.join(os.path.expanduser("~"), ".gemini", "readstitch_browser")
+        chrome_path = r"C:\Program Files\Google\Chrome\Application\chrome.exe"
+        if not os.path.exists(chrome_path):
+            chrome_path = r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe"
+            
+        cmd = [
+            chrome_path,
+            "--remote-debugging-port=9223",
+            "--user-data-dir=" + profile_dir,
+            "--no-first-run",
+            "--no-default-browser-check",
+            "--disable-blink-features=AutomationControlled",
+            "--disable-infobars"
+        ]
+        if headless:
+            cmd.append("--headless=new")
+            
+        process = subprocess.Popen(cmd)
+        time.sleep(3) # Aguarda porta abrir
+        return process
+
+    def _get_page_content_with_playwright(self, url: str, wait_selector: str = None) -> str:
+        profile_dir = os.path.join(os.path.expanduser("~"), ".gemini", "readstitch_utoon_browser")
         os.makedirs(profile_dir, exist_ok=True)
         
         def run_browser(headless):
-            with sync_playwright() as p:
-                context = p.chromium.launch_persistent_context(
-                    user_data_dir=profile_dir,
-                    channel="msedge",
-                    headless=headless,
-                    viewport={"width": 1280, "height": 720},
-                    user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/131.0.0.0"
-                )
-                page = context.new_page()
-                Stealth().apply_stealth_sync(page)
+            chrome_process = self._launch_chrome_cdp(profile_dir, headless=headless)
+            
+            def _do_fetch():
+                from playwright.sync_api import sync_playwright
+                import time
                 
-                try:
-                    page.goto(url, wait_until="domcontentloaded", timeout=30000)
-                except Exception as e:
-                    print("Goto timeout:", e)
-                
-                # Check for Cloudflare by waiting for the target selector
-                # If it doesn't appear in 8 seconds, we assume Cloudflare blocked us
-                cf_blocked = False
-                
-                if wait_selector:
+                with sync_playwright() as p:
+                    browser = p.chromium.connect_over_cdp("http://localhost:9223")
+                    context = browser.contexts[0]
+                    page = context.pages[0] if context.pages else context.new_page()
+                    
                     try:
-                        # Em headless, esperamos pouco. Em headless=False, esperamos muito.
-                        timeout = 10000 if headless else 180000
-                        page.wait_for_selector(wait_selector, timeout=timeout)
-                    except Exception:
+                        page.goto(url, wait_until="domcontentloaded", timeout=30000)
+                    except Exception as e:
+                        print("Goto timeout:", e)
+                    
+                    cf_blocked = False
+                    for _ in range(10 if headless else 180):
+                        try:
+                            title = page.title().strip()
+                            if title and "Just a moment" not in title and "Cloudflare" not in title:
+                                break
+                        except:
+                            pass
+                        time.sleep(1)
+                    else:
                         if headless:
                             cf_blocked = True
-                
-                # Se estivermos com a janela invisível e bloqueou, abortamos para reabrir visível
-                if headless and cf_blocked:
-                    context.close()
-                    time.sleep(2) 
-                    return None
                     
-                if "manga/" in url and "chapter-" not in url:
-                    try:
-                        chapters_html = page.evaluate('''() => {
-                            let base = window.location.href.split('?')[0].replace(/\\/$/, '');
-                            return fetch(base + '/ajax/chapters/', {
-                                method: 'POST'
-                            }).then(res => res.text());
-                        }''')
+                    if headless and cf_blocked:
+                        try:
+                            browser.close()
+                        except: pass
+                        time.sleep(2) 
+                        return None
                         
-                        if chapters_html and len(chapters_html) > 100 and "chapter" in chapters_html.lower():
-                            context.close()
-                            return chapters_html
-                    except Exception as e:
-                        print("AJAX fallback via evaluate falhou:", e)
-                        
-                if "chapter-" in url:
-                    for _ in range(30):
-                        page.evaluate("window.scrollBy(0, 1500)")
-                        time.sleep(0.5)
-                        
-                html = page.content()
-                context.close()
-                return html
+                    if "manga/" in url and "chapter-" not in url:
+                        for retry in range(5):
+                            try:
+                                page.wait_for_load_state("domcontentloaded", timeout=5000)
+                                chapters_html = page.evaluate('''() => {
+                                    let base = window.location.href.split('?')[0].replace(/\\/$/, '');
+                                    return fetch(base + '/ajax/chapters/', {
+                                        method: 'POST'
+                                    }).then(res => res.text());
+                                }''')
+                                
+                                if chapters_html and len(chapters_html) > 100 and "chapter" in chapters_html.lower():
+                                    try: browser.close()
+                                    except: pass
+                                    return chapters_html
+                            except Exception as e:
+                                time.sleep(2)
+                                continue
+                        print("AJAX fallback via evaluate falhou após 5 tentativas.")
+                            
+                    if "chapter-" in url:
+                        for _ in range(30):
+                            try: page.evaluate("window.scrollBy(0, 1500)")
+                            except: pass
+                            time.sleep(0.5)
+                            
+                    try: html = page.content()
+                    except: html = ""
+                    
+                    try: browser.close()
+                    except: pass
+                    return html
+
+            try:
+                import concurrent.futures
+                with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+                    future = executor.submit(_do_fetch)
+                    return future.result()
+            finally:
+                import subprocess
+                try:
+                    subprocess.run(['taskkill', '/F', '/T', '/PID', str(chrome_process.pid)], capture_output=True)
+                except:
+                    pass
+                chrome_process.terminate()
 
         # Primeira tentativa invisível
         html = run_browser(headless=True)
         if html is None:
-            print("Cloudflare detectado! Abrindo janela visível para você resolver o captcha...")
+            print("Utoon: Cloudflare detectado! Abrindo janela visível para você resolver o captcha...")
             html = run_browser(headless=False)
             
         return html
