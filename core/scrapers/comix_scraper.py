@@ -20,7 +20,12 @@ class ComixScraper(BaseScraper):
         import re
         
         with sync_playwright() as p:
-            browser = p.chromium.launch(channel="msedge", headless=True)
+            browser = p.chromium.launch(
+                channel="msedge", 
+                headless=False,
+                args=['--disable-blink-features=AutomationControlled'],
+                ignore_default_args=['--enable-automation']
+            )
             context = browser.new_context(
                 user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/131.0.0.0"
             )
@@ -161,7 +166,12 @@ class ComixScraper(BaseScraper):
         import time
         
         with sync_playwright() as p:
-            browser = p.chromium.launch(channel="msedge", headless=True)
+            browser = p.chromium.launch(
+                channel="msedge", 
+                headless=False,
+                args=['--disable-blink-features=AutomationControlled'],
+                ignore_default_args=['--enable-automation']
+            )
             context = browser.new_context(
                 user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
             )

@@ -36,10 +36,66 @@ class PiccomaScraper(BaseScraper):
             'Referer': 'https://piccoma.com/'
         }
         self.cookies = None
+        self.storage_state = None
         self._login_failed = False
+        self._pw = None
+        self._browser = None
+        self._context = None
+        self._page = None
+
+    def close_browser(self):
+        if hasattr(self, '_page') and self._page and not self._page.is_closed():
+            try:
+                self._page.close()
+            except:
+                pass
+        if hasattr(self, '_browser') and self._browser:
+            try:
+                self._browser.close()
+            except:
+                pass
+        if hasattr(self, '_pw') and self._pw:
+            try:
+                self._pw.stop()
+            except:
+                pass
+        self._page = None
+        self._context = None
+        self._browser = None
+        self._pw = None
+
+    def __del__(self):
+        self.close_browser()
+
+    def _get_page(self):
+        from playwright.sync_api import sync_playwright
+        from playwright_stealth import Stealth
+        if not self._pw:
+            self._pw = sync_playwright().start()
+            self._browser = self._pw.chromium.launch(
+                channel="msedge",
+                headless=False,
+                args=['--disable-blink-features=AutomationControlled'],
+                ignore_default_args=['--enable-automation']
+            )
+            self._context = self._browser.new_context()
+            if self.cookies:
+                self._context.add_cookies(self.cookies)
+            
+            # Update Python headers with the actual browser User-Agent to avoid anti-bot mismatch
+            temp_page = self._context.new_page()
+            self.headers['User-Agent'] = temp_page.evaluate("navigator.userAgent")
+            temp_page.close()
+            
+            
+        if not self._page or self._page.is_closed():
+            self._page = self._context.new_page()
+            Stealth().apply_stealth_sync(self._page)
+            
+        return self._page
 
     def _login(self, page):
-        if self.cookies or self._login_failed:
+        if self.storage_state or self._login_failed:
             return
             
         from core.services.settings_handler import SettingsHandler
@@ -54,16 +110,25 @@ class PiccomaScraper(BaseScraper):
 
         try:
             page.goto("https://piccoma.com/web/acc/email/signin", timeout=60000, wait_until="domcontentloaded")
-            page.wait_for_selector('input[name="email"]', timeout=60000)
-            page.fill('input[name="email"]', email)
-            page.fill('input[name="password"]', password)
-            page.click('input[type="submit"]')
-            page.wait_for_url("**/web/", timeout=10000)
-        except Exception:
+            if "signin" not in page.url:
+                pass
+            else:
+                page.wait_for_selector('input[name="email"]', timeout=30000)
+                page.fill('input[name="email"]', email)
+                page.fill('input[name="password"]', password)
+                page.click('input[type="submit"]')
+                # Wait until we leave the signin page, giving time for CAPTCHA if needed
+                try:
+                    page.wait_for_url(lambda url: "signin" not in url, timeout=60000)
+                except:
+                    pass
+        except Exception as e:
+            print("Login timeout ou erro:", e)
             pass
             
         try:
             self.cookies = page.context.cookies()
+            self.storage_state = page.context.storage_state()
         except:
             pass
 
@@ -82,111 +147,92 @@ class PiccomaScraper(BaseScraper):
             series_url = series_url.rstrip('/') + '/episodes?etype=E'
 
         chapters = []
-        with sync_playwright() as p:
-            browser = p.chromium.launch(
-                channel="msedge",
-                headless=False,
-                args=['--disable-blink-features=AutomationControlled'],
-                ignore_default_args=['--enable-automation']
-            )
-            context = browser.new_context(user_agent=self.headers['User-Agent'])
-            if self.cookies:
-                context.add_cookies(self.cookies)
-                
-            page = context.new_page()
-            Stealth().apply_stealth_sync(page)
+        page = self._get_page()
+        
+        # Try logging in
+        self._login(page)
             
-            # Try logging in
-            self._login(page)
-            self.cookies = context.cookies()
-            
-            page.goto(series_url, timeout=60000, wait_until='domcontentloaded')
-            try:
-                page.wait_for_selector('#js_episodeList', timeout=15000)
-            except:
-                pass
-            
-            html = page.content()
-            soup = BeautifulSoup(html, 'html.parser')
-            ul = soup.find('ul', id='js_episodeList')
-            if not ul:
-                browser.close()
-                return []
+        page.goto(series_url, timeout=60000, wait_until='domcontentloaded')
+        try:
+            page.wait_for_selector('#js_episodeList', timeout=15000)
+        except:
+            pass
+        
+        html = page.content()
+        soup = BeautifulSoup(html, 'html.parser')
+        ul = soup.find('ul', id='js_episodeList')
+        if not ul:
+            if self._context:
+                self.cookies = self._context.cookies()
+                self.storage_state = self._context.storage_state()
+            self.close_browser()
+            return []
 
+        import re
+        match_id = re.search(r'/product/(\d+)', series_url)
+        product_id = match_id.group(1) if match_id else series_url.rstrip('/').split('/')[-1]
+        
+        for li in ul.find_all('li'):
+            a_tag = li.find('a')
+            if not a_tag:
+                continue
+                
+            title_tag = li.find('h2')
+            if not title_tag:
+                continue
+                
+            episode_id = a_tag.get('data-episode_id')
+            if not episode_id:
+                continue
+                
+            title = title_tag.text.strip()
+            
             import re
-            match_id = re.search(r'/product/(\d+)', series_url)
-            product_id = match_id.group(1) if match_id else series_url.rstrip('/').split('/')[-1]
-            
-            for li in ul.find_all('li'):
-                a_tag = li.find('a')
-                if not a_tag:
-                    continue
-                    
-                title_tag = li.find('h2')
-                if not title_tag:
-                    continue
-                    
-                episode_id = a_tag.get('data-episode_id')
-                if not episode_id:
-                    continue
-                    
-                title = title_tag.text.strip()
+            num_match = re.search(r'(\d+(?:\.\d+)?)', title)
+            if num_match:
+                chapter_num = num_match.group(1)
+                url = f"https://piccoma.com/web/viewer/{product_id}/{episode_id}?chapter={chapter_num}"
+            else:
+                url = f"https://piccoma.com/web/viewer/{product_id}/{episode_id}?title={urllib.parse.quote(title)}"
                 
-                import re
-                num_match = re.search(r'(\d+(?:\.\d+)?)', title)
-                if num_match:
-                    chapter_num = num_match.group(1)
-                    url = f"https://piccoma.com/web/viewer/{product_id}/{episode_id}?chapter={chapter_num}"
-                else:
-                    url = f"https://piccoma.com/web/viewer/{product_id}/{episode_id}?title={urllib.parse.quote(title)}"
-                    
-                chapters.append(url)
-                
-            browser.close()
+            chapters.append(url)
             
+        if self._context:
+            self.cookies = self._context.cookies()
+            self.storage_state = self._context.storage_state()
+            
+        self.close_browser()
         return chapters
 
     def get_chapter_images(self, chapter_url):
-        from playwright_stealth import Stealth
         import re
         images = []
-        with sync_playwright() as p:
-            browser = p.chromium.launch(
-                channel="msedge",
-                headless=False,
-                args=['--disable-blink-features=AutomationControlled'],
-                ignore_default_args=['--enable-automation']
-            )
-            context = browser.new_context(user_agent=self.headers['User-Agent'])
-            if self.cookies:
-                context.add_cookies(self.cookies)
-                
-            page = context.new_page()
-            Stealth().apply_stealth_sync(page)
+        page = self._get_page()
+        
+        self._login(page)
+        
+        # Extract product_id and episode_id from chapter_url
+        # chapter_url example: https://piccoma.com/web/viewer/208853/6298024?chapter=11
+        match = re.search(r'/viewer/(\d+)/(\d+)', chapter_url)
+        if match:
+            product_id = match.group(1)
+            episode_id = match.group(2)
             
-            self._login(page)
-            self.cookies = context.cookies()
+            # Go to episodes page
+            episodes_url = f"https://piccoma.com/web/product/{product_id}/episodes?etype=E"
+            page.goto(episodes_url, timeout=60000, wait_until='domcontentloaded')
+            try:
+                el = page.wait_for_selector(f"a[data-episode_id='{episode_id}']", timeout=15000)
+                if el:
+                    # Scroll into view and force click via JS
+                    el.evaluate("node => { node.scrollIntoView(); node.click(); }")
+                page.wait_for_load_state("networkidle", timeout=5000)
+                page.wait_for_timeout(2000) # Give modal time to animate
+            except:
+                pass
             
-            # Extract product_id and episode_id from chapter_url
-            # chapter_url example: https://piccoma.com/web/viewer/208853/6298024?chapter=11
-            match = re.search(r'/viewer/(\d+)/(\d+)', chapter_url)
-            if match:
-                product_id = match.group(1)
-                episode_id = match.group(2)
-                
-                # Go to episodes page
-                episodes_url = f"https://piccoma.com/web/product/{product_id}/episodes?etype=E"
-                page.goto(episodes_url, timeout=60000, wait_until='domcontentloaded')
-                try:
-                    el = page.wait_for_selector(f"a[data-episode_id='{episode_id}']", timeout=15000)
-                    if el:
-                        # Scroll into view and force click via JS
-                        el.evaluate("node => { node.scrollIntoView(); node.click(); }")
-                    page.wait_for_load_state("networkidle", timeout=5000)
-                    page.wait_for_timeout(2000) # Give modal time to animate
-                except:
-                    pass
-                
+            # Se já fomos redirecionados para o visualizador (capítulo já estava desbloqueado/gratuito), pular o modal
+            if '/viewer/' not in page.url:
                 # Check if the modal appeared
                 try:
                     # Piccoma recently updated their CSS classes to use PCM- prefix
@@ -196,44 +242,46 @@ class PiccomaScraper(BaseScraper):
                         page.wait_for_load_state("networkidle", timeout=10000)
                 except:
                     pass
-                    
-                # Finally, go to the chapter URL just in case the click didn't redirect
-                if '/viewer/' not in page.url:
-                    page.goto(chapter_url, timeout=60000, wait_until='domcontentloaded')
-                    try:
-                        page.wait_for_load_state("networkidle", timeout=15000)
-                    except:
-                        pass
-            else:
-                # Fallback if URL doesn't match expected pattern
+                
+            # Finally, go to the chapter URL just in case the click didn't redirect
+            if '/viewer/' not in page.url:
                 page.goto(chapter_url, timeout=60000, wait_until='domcontentloaded')
                 try:
                     page.wait_for_load_state("networkidle", timeout=15000)
                 except:
                     pass
+        else:
+            # Fallback if URL doesn't match expected pattern
+            page.goto(chapter_url, timeout=60000, wait_until='domcontentloaded')
+            try:
+                page.wait_for_load_state("networkidle", timeout=15000)
+            except:
+                pass
+        
+        html = page.content()
+        soup = BeautifulSoup(html, 'html.parser')
+        
+        scripts = soup.find_all('script')
+        pdata_script = [s.string for s in scripts if s.string and '_pdata_' in s.string]
             
-            html = page.content()
-            soup = BeautifulSoup(html, 'html.parser')
+        if self._context:
+            self.cookies = self._context.cookies()
+            self.storage_state = self._context.storage_state()
             
-            scripts = soup.find_all('script')
-            pdata_script = [s.string for s in scripts if s.string and '_pdata_' in s.string]
+        if not pdata_script:
+            return []
             
-            browser.close()
-            
-            if not pdata_script:
-                return []
-                
-            script_content = pdata_script[0]
-            
-            # Extract strictly the 'path' key to avoid capturing blurry thumbnails
-            pattern = r"(?:\"path\"|path|'path')\s*:\s*['\"](//[^'\"]+)['\"]"
-            images = ["https:" + image for image in re.findall(pattern, script_content)]
-            
-            # Fallback if no images found, filtering out common thumbnail keywords
-            if not images:
-                pattern_fallback = r"(?<=:')[^']+(?=')"
-                images = ["https:" + img for img in re.findall(pattern_fallback, script_content) if img.startswith("//") and "thumb" not in img.lower() and "blur" not in img.lower()]
-            
+        script_content = pdata_script[0]
+        
+        # Extract strictly the 'path' key to avoid capturing blurry thumbnails
+        pattern = r"(?:\"path\"|path|'path')\s*:\s*['\"](//[^'\"]+)['\"]"
+        images = ["https:" + image for image in re.findall(pattern, script_content)]
+        
+        # Fallback if no images found, filtering out common thumbnail keywords
+        if not images:
+            pattern_fallback = r"(?<=:')[^']+(?=')"
+            images = ["https:" + img for img in re.findall(pattern_fallback, script_content) if img.startswith("//") and "thumb" not in img.lower() and "blur" not in img.lower()]
+        
         return images
 
     def get_seed(self, checksum: str, expiry_key: str) -> str:

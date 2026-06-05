@@ -58,6 +58,7 @@ Baixe capítulos diretamente dos principais sites de leitura:
 | [FlameComics](https://flamecomics.com) | ✅ |
 | [ResetScans](https://reset-scans.org) | ✅ |
 | [MangaDex](https://mangadex.org) | ✅ |
+| [Elftoon](https://elftoon.com) | ✅ |
 
 </td>
 <td valign="top">

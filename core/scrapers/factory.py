@@ -86,5 +86,8 @@ def get_scraper_for_url(url):
     elif 'reset-scans.org' in url_lower or 'resetscans' in url_lower:
         from .resetscans_scraper import ResetScansScraper
         return ResetScansScraper()
+    elif 'elftoon.com' in url_lower or 'elftoon' in url_lower:
+        from .elftoon_scraper import ElftoonScraper
+        return ElftoonScraper()
     # Default to Asura
     return AsuraScraper()
