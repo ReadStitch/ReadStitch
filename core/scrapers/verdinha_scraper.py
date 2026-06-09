@@ -1,4 +1,4 @@
-﻿import logging
+import logging
 import urllib.request
 import json
 from .base_scraper import BaseScraper
@@ -165,11 +165,25 @@ class VerdinhaScraper(BaseScraper):
             if not pages:
                 raise Exception("O capÃ­tulo nÃ£o possui imagens acessÃ­veis")
                 
+            obra_dict = chap_data.get('obra', {})
+            scan_id = obra_dict.get('scan_id', 1)
+            obr_id = chap_data.get('obr_id')
+            cap_numero = chap_data.get('cap_numero')
+            
             images = []
             for p in pages:
-                img_path = p.get('path')
-                if img_path:
-                    images.append(f"{self.cdn_url}/{img_path.lstrip('/')}")
+                # O novo JSON usa 'src' em vez de 'path'
+                img_src = p.get('src') or p.get('path')
+                if img_src:
+                    if img_src.startswith('/'):
+                        # Caminho legado migrado para o novo CDN
+                        images.append(f"https://cdn.verdinha.wtf/wp-content/uploads/WP-manga/data/{img_src.lstrip('/')}")
+                    elif '/' in img_src:
+                        # Fallback idêntico
+                        images.append(f"https://cdn.verdinha.wtf/wp-content/uploads/WP-manga/data/{img_src.lstrip('/')}")
+                    else:
+                        # Montagem correta com as novas chaves
+                        images.append(f"https://cdn.verdinha.wtf/scans/{scan_id}/obras/{obr_id}/capitulos/{cap_numero}/{img_src}")
                     
             logger.info(f"[{self.name}] Encontradas {len(images)} imagens")
             return images
