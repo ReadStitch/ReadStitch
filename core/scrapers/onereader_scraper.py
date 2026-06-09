@@ -19,7 +19,8 @@ class OneReaderScraper(BaseScraper):
 
     def _extract_slug(self, url: str) -> str:
         # Example: https://onereader.net/manga/regressao-promotor-mestre
-        match = re.search(r"/manga/([^/?]+)", url)
+        # Example: https://onereader.net/manga-details?id=antigo-corpo-sagrado
+        match = re.search(r"(?:/manga/|\?id=)([^/?&]+)", url)
         if match:
             return match.group(1)
         return ""
