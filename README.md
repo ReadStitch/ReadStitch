@@ -143,6 +143,14 @@ Baseado no **Waifu2x-Extension-GUI**, o ReadStitch aplica upscaling de imagens c
    python ReadStitchConsole.py -i "./chapter" -sh 7500 -t .png
    ```
 
+### Gerando o Executável (.exe)
+Caso queira compilar o aplicativo após realizar modificações no código:
+```bash
+# Com o ambiente virtual ativado, rode o PyInstaller usando o arquivo .spec
+pyinstaller ReadStitch.spec
+```
+O executável final e os arquivos necessários estarão disponíveis na pasta `dist/ReadStitch/`.
+
 ---
 
 ## Comandos do Console (CLI)

@@ -12,20 +12,22 @@ class FetchThread(QThread):
     error = Signal(str)
     progress = Signal(str)
 
-    def __init__(self, url):
+    def __init__(self, url, language=None):
         super().__init__()
         self.url = url
+        self.language = language
         self.scraper = get_scraper_for_url(url)
 
     def run(self):
         try:
-            # Passa o callback se o scraper suportar (args default)
             import inspect
             sig = inspect.signature(self.scraper.get_chapter_groups)
+            kwargs = {}
             if 'progress_callback' in sig.parameters:
-                groups = self.scraper.get_chapter_groups(self.url, progress_callback=self.progress.emit)
-            else:
-                groups = self.scraper.get_chapter_groups(self.url)
+                kwargs['progress_callback'] = self.progress.emit
+            if 'language' in sig.parameters and self.language is not None:
+                kwargs['language'] = self.language
+            groups = self.scraper.get_chapter_groups(self.url, **kwargs)
             self.finished.emit(groups)
         except Exception as e:
             self.error.emit(str(e))
@@ -108,6 +110,22 @@ class DownloaderController(QObject):
         
         self.w.dlDirField.setText(self.s.load("download_dir"))
         
+        # ── Seletor de idioma (MangaDex) ──────────────────────────────────────
+        self.langWidget = QWidget()
+        langLayout = QHBoxLayout(self.langWidget)
+        langLayout.setContentsMargins(0, 0, 0, 0)
+        langLayout.setSpacing(8)
+        langLayout.addWidget(QLabel("Idioma:"))
+        self.langCombo = QComboBox()
+        # Importa os idiomas do scraper
+        from core.scrapers.mangadex_scraper import MangadexScraper
+        self._mangadex_langs = MangadexScraper.SUPPORTED_LANGUAGES
+        self.langCombo.addItems(list(self._mangadex_langs.keys()))
+        self.langCombo.setCurrentText("Auto (pt-br → pt → en)")
+        langLayout.addWidget(self.langCombo)
+        self.langWidget.setVisible(False)
+        self.w.downloaderGroupBox.layout().insertWidget(1, self.langWidget)
+
         # Add checkbox for auto-processing
         self.dlAutoProcessCheckbox = QCheckBox("Processar automaticamente após baixar (Stitch)")
         self.dlAutoProcessCheckbox.setChecked(True)
@@ -144,13 +162,13 @@ class DownloaderController(QObject):
 
         # ── Barra de ações: Selecionar Todos + Intervalo ──────────────────────
         self.actionBarWidget = QWidget()
+        self.actionBarWidget.setMinimumHeight(36)
         actionBarLayout = QHBoxLayout(self.actionBarWidget)
         actionBarLayout.setContentsMargins(0, 2, 0, 2)
         actionBarLayout.setSpacing(8)
 
         # Botão Selecionar Todos
         self.btnSelectAll = QPushButton("Selecionar Todos")
-        self.btnSelectAll.setFixedHeight(26)
         self.btnSelectAll.clicked.connect(self._select_all_chapters)
         actionBarLayout.addWidget(self.btnSelectAll)
 
@@ -163,23 +181,20 @@ class DownloaderController(QObject):
         # Intervalo de capítulos
         actionBarLayout.addWidget(QLabel("Intervalo:"))
         self.spinFrom = QSpinBox()
-        self.spinFrom.setMinimum(1)
+        self.spinFrom.setMinimum(0)
         self.spinFrom.setMaximum(9999)
         self.spinFrom.setFixedWidth(65)
-        self.spinFrom.setSpecialValueText("Início")
-        self.spinFrom.setValue(1)
+        self.spinFrom.setValue(0)
         actionBarLayout.addWidget(self.spinFrom)
         actionBarLayout.addWidget(QLabel("até"))
         self.spinTo = QSpinBox()
-        self.spinTo.setMinimum(1)
+        self.spinTo.setMinimum(0)
         self.spinTo.setMaximum(9999)
         self.spinTo.setFixedWidth(65)
-        self.spinTo.setSpecialValueText("Fim")
-        self.spinTo.setValue(9999)
+        self.spinTo.setValue(0)
         actionBarLayout.addWidget(self.spinTo)
 
         btnApplyRange = QPushButton("Aplicar")
-        btnApplyRange.setFixedHeight(26)
         btnApplyRange.clicked.connect(self._apply_range)
         actionBarLayout.addWidget(btnApplyRange)
 
@@ -188,18 +203,42 @@ class DownloaderController(QObject):
         # Insere logo abaixo do campo de pasta (índice 2 = após URL e pasta)
         self.w.downloaderGroupBox.layout().insertWidget(2, self.actionBarWidget)
 
+        # ── Botão de Resolver Proteção Cloudflare ────────────────────────────
+        self.cfBypassWidget = QWidget()
+        cfLayout = QHBoxLayout(self.cfBypassWidget)
+        cfLayout.setContentsMargins(0, 0, 0, 0)
+        cfLayout.setSpacing(8)
+        self.cfBypassBtn = QPushButton("🛡 Resolver Proteção Cloudflare")
+        self.cfBypassBtn.setToolTip(
+            "Abre o navegador para você resolver o captcha do Cloudflare manualmente. "
+            "Após resolver, os cookies são salvos automaticamente."
+        )
+        self.cfBypassBtn.clicked.connect(self._solve_cloudflare)
+        cfLayout.addWidget(self.cfBypassBtn)
+        self.cfBypassWidget.setVisible(False)
+        self.w.downloaderGroupBox.layout().insertWidget(2, self.cfBypassWidget)
+
         # Auto-detect site from URL when user pastes/types in the URL field
         self.w.dlUrlField.textChanged.connect(self._auto_detect_site)
 
     def _auto_detect_site(self, url: str):
         """Detecta o site pela URL e muda o combo de credenciais automaticamente."""
         url_lower = url.lower()
+        is_mangadex = "mangadex" in url_lower
+        is_cloudflare_site = "manhastro.net" in url_lower
+        self.langWidget.setVisible(is_mangadex)
+        self.cfBypassWidget.setVisible(is_cloudflare_site)
+
         if "piccoma" in url_lower:
             site = "Piccoma"
         elif "verdinha" in url_lower or "reaperscans" in url_lower or "greenscans" in url_lower:
             site = "Verdinha"
         elif "mediocre" in url_lower or "mediocrescan" in url_lower:
             site = "Mediocretoons"
+        elif "empreguetes" in url_lower:
+            site = "Empreguetes"
+        elif "tiraninha" in url_lower:
+            site = "Tiraninha"
         else:
             return  # URL não reconhecida — não mexe no combo
 
@@ -207,6 +246,48 @@ class DownloaderController(QObject):
         idx = combo.findText(site)
         if idx >= 0 and combo.currentIndex() != idx:
             combo.setCurrentIndex(idx)  # Isso vai disparar on_login_site_changed automaticamente
+
+    def _solve_cloudflare(self):
+        """Abre o navegador Playwright para o usuário resolver o desafio do Cloudflare."""
+        from core.cloudflare_bypass import solve_cloudflare
+
+        url = self.w.dlUrlField.text().strip()
+        if not url:
+            url = "https://manhastro.net"
+
+        # Extrai apenas a origem (sem o caminho do manga)
+        import re
+        match = re.match(r'(https?://[^/]+)', url)
+        origin_url = match.group(1) if match else url
+
+        self.cfBypassBtn.setEnabled(False)
+        self.cfBypassBtn.setText("⏳ Aguardando verificação...")
+        self.dlStatusLabel.setVisible(True)
+        self.dlStatusLabel.setText("🛡 Navegador aberto! Resolva o captcha e aguarde a janela fechar.")
+
+        # Use a QTimer to safely update the GUI from the bypass thread
+        _btn = self.cfBypassBtn
+        _lbl = self.dlStatusLabel
+
+        def on_success(domain, cookies):
+            from PySide6.QtCore import QTimer
+            def _update():
+                _btn.setText("🛡 Resolver Proteção Cloudflare")
+                _btn.setEnabled(True)
+                _lbl.setText(f"✅ Proteção resolvida! Cookies salvos para {domain}.")
+            QTimer.singleShot(0, _update)
+
+        def on_error(msg):
+            from PySide6.QtCore import QTimer
+            def _update():
+                _btn.setText("🛡 Resolver Proteção Cloudflare")
+                _btn.setEnabled(True)
+                _lbl.setText(f"❌ Erro: {msg}")
+            QTimer.singleShot(0, _update)
+
+        solve_cloudflare(origin_url, on_success=on_success, on_error=on_error)
+
+
 
     def _select_all_chapters(self):
         """Toggle: seleciona todos ou desmarca todos, alternando o label do botão."""
@@ -265,11 +346,18 @@ class DownloaderController(QObject):
         self.dlStatusLabel.setText("Buscando capítulos...")
         self.dlProgressBar.setVisible(False)
 
-        self.fetch_thread = FetchThread(url)
+        self.fetch_thread = FetchThread(url, language=self._get_selected_language())
         self.fetch_thread.finished.connect(self.on_fetch_success)
         self.fetch_thread.error.connect(self.on_fetch_error)
         self.fetch_thread.progress.connect(lambda msg: self.dlStatusLabel.setText(msg))
         self.fetch_thread.start()
+
+    def _get_selected_language(self):
+        """Retorna o código de idioma selecionado se o widget estiver visível (MangaDex)."""
+        if self.langWidget.isVisible():
+            label = self.langCombo.currentText()
+            return self._mangadex_langs.get(label, "auto")
+        return None
 
     def on_fetch_success(self, groups_dict):
         self.w.dlFetchButton.setEnabled(True)

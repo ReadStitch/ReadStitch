@@ -85,7 +85,7 @@ class QiScraper(BaseScraper):
         html = self._fetch_rendered_with_playwright(series_url)
         
         slug = [p for p in series_url.split('/') if p][-1]
-        pattern = r'href=[\'\"](/series/' + re.escape(slug) + r'/chapter-[0-9]+)[\'\"]'
+        pattern = r'href=[\'\"](/series/' + re.escape(slug) + r'/chapter-[0-9\.-]+)[\'\"]'
         links = re.findall(pattern, html)
         
         chapters = set()
@@ -95,9 +95,17 @@ class QiScraper(BaseScraper):
                 
         def get_chap_num(url):
             try:
-                return float(url.split('chapter-')[-1].split('/')[0].replace('-', '.'))
+                # chapter-1-5 or chapter-1.5 -> float
+                raw_num = url.split('chapter-')[-1].split('/')[0]
+                if '-' in raw_num:
+                    parts = raw_num.split('-')
+                    # if e.g. 1-5 it means 1.5, otherwise just take the first part
+                    if len(parts) >= 2 and parts[1].isdigit():
+                        return float(f"{parts[0]}.{parts[1]}")
+                    return float(parts[0])
+                return float(raw_num.replace('_', '.'))
             except:
-                return 0
+                return 0.0
                 
         return sorted(list(chapters), key=get_chap_num, reverse=True)
 

@@ -71,6 +71,7 @@ class _SettingsSnapshot:
     scan_step: int
     run_postprocess: bool
     run_comiczip: bool
+    waifu_only: bool
     parallel_processing: bool
     postprocess_app: str
     postprocess_args: str
@@ -118,6 +119,7 @@ class _SettingsSnapshot:
             scan_step=s.load("scan_step"),
             run_postprocess=s.load("run_postprocess"),
             run_comiczip=s.load("run_comiczip"),
+            waifu_only=s.load("waifu_only"),
             parallel_processing=s.load("parallel_processing"),
             postprocess_app=s.load("postprocess_app"),
             postprocess_args=s.load("postprocess_args"),
@@ -538,6 +540,21 @@ class GuiStitchProcess:
             f"footer_enabled={snap.watermark_footer_enabled}"
         )
         _wm_run_log(console_func, wm_line)
+        # Waifu-only mode: skip stitch entirely, run postprocess on input images
+        if snap.waifu_only and not disable_postprocess:
+            if not snap.postprocess_app:
+                raise ValueError(
+                    "Modo 'Apenas Waifu2X' ativado, mas nenhum aplicativo de "
+                    "pós-processamento está configurado. Verifique as configurações."
+                )
+            self._run_waifu_only(
+                input_path=input_path,
+                snap=snap,
+                status_func=status_func,
+                console_func=console_func,
+            )
+            return
+
         has_postprocess = snap.run_postprocess and not disable_postprocess
         run_comiczip = snap.run_comiczip and not disable_comiczip
         benchmark = PerfBenchmark(
@@ -784,3 +801,71 @@ class GuiStitchProcess:
         if benchmark_file:
             console_func(f"Benchmark saved: {benchmark_file}\n")
         status_func(100, f"Idle - Process completed in {elapsed:.3f} seconds")
+
+    @staticmethod
+    def _run_waifu_only(
+        input_path: str,
+        snap: _SettingsSnapshot,
+        status_func: StatusFunc,
+        console_func: ConsoleFunc,
+    ) -> None:
+        """Run only the Waifu2X post-processor on existing images, skipping stitch.
+
+        Treats the input directory as the 'stitched' output and runs the
+        postprocess_app directly on each sub-directory found there.
+        The processed results go to input_path + POSTPROCESS_SUFFIX.
+        """
+        from time import time as _time
+        from core.models.work_directory import WorkDirectory
+        from core.utils.constants import POSTPROCESS_SUFFIX, SUPPORTED_IMG_TYPES
+        from natsort import natsorted
+
+        start_time = _time()
+        status_func(0, "Waifu-only: explorando pasta de entrada...")
+
+        abs_input = os.path.abspath(input_path)
+        postprocess_root = abs_input + POSTPROCESS_SUFFIX
+
+        work_dirs: list[WorkDirectory] = []
+        for dir_root, _, files in os.walk(abs_input, topdown=True):
+            img_files = [f for f in files if f.lower().endswith(SUPPORTED_IMG_TYPES)]
+            if not img_files:
+                continue
+            rel_root = os.path.relpath(dir_root, abs_input)
+            if rel_root == ".":
+                post_path = postprocess_root
+            else:
+                post_path = os.path.join(postprocess_root, rel_root)
+            wd = WorkDirectory(
+                input=dir_root,
+                output=dir_root,          # map [stitched] to the input images folder
+                postprocess=os.path.normpath(post_path),
+            )
+            work_dirs.append(wd)
+
+        total = len(work_dirs)
+        if total == 0:
+            status_func(0, "Idle - Nenhuma imagem encontrada na pasta de entrada.")
+            return
+
+        status_func(5, f"Waifu-only: {total} pasta(s) encontrada(s)")
+
+        postprocess_runner = PostProcessRunner()
+        for idx, wd in enumerate(work_dirs, 1):
+            pct = int(5 + 95 * (idx - 1) / total)
+            dirname = os.path.basename(wd.input_path) or wd.input_path
+            status_func(pct, f"Waifu-only - [{idx}/{total}] {dirname}")
+            console_func(f"Waifu-only: processando '{dirname}'...\n")
+            try:
+                postprocess_runner.run(
+                    workdirectory=wd,
+                    postprocess_app=snap.postprocess_app,
+                    postprocess_args=snap.postprocess_args,
+                    console_func=console_func,
+                )
+            except Exception as exc:
+                status_func(pct, f"Waifu-only - [{idx}/{total}] Falhou: {exc}")
+                raise
+
+        elapsed = _time() - start_time
+        status_func(100, f"Idle - Waifu-only concluído em {elapsed:.3f} segundos")

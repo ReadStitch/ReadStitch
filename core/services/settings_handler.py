@@ -43,9 +43,9 @@ class SettingsHandler:
         if migrated:
             self.save_all(self.current_profiles)
 
-    def load(self, key: str) -> Any:
+    def load(self, key: str, default: Any = None) -> Any:
         """Loads the value of a single setting key"""
-        return self.current_settings.__dict__[key]
+        return self.current_settings.__dict__.get(key, default)
 
     @logFunc(inclass=True)
     def save(self, key: str, value: Any):

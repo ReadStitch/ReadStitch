@@ -16,7 +16,7 @@ from typing import Any, Callable
 from PySide6.QtCore import QEvent, QObject, Qt, QThread, Signal, QTimer
 from PySide6.QtGui import QIcon, QPixmap
 from PySide6.QtUiTools import QUiLoader
-from PySide6.QtWidgets import QApplication, QDialog, QFileDialog, QMessageBox, QProgressDialog
+from PySide6.QtWidgets import QApplication, QDialog, QFileDialog, QMessageBox, QProgressDialog, QSizePolicy
 
 from assets.ReadStitchLogo import icon
 from core.services import SettingsHandler
@@ -402,6 +402,21 @@ def _on_load() -> None:
         else:
             _main_window.ActionGroupBox.show()
             
+        # Força o QTabWidget a calcular seu tamanho apenas com a aba atual
+        for i in range(_main_window.mainTabWidget.count()):
+            widget = _main_window.mainTabWidget.widget(i)
+            if i == index:
+                widget.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
+                widget.setMaximumSize(16777215, 16777215)
+                widget.setMinimumSize(0, 0)
+            else:
+                widget.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Ignored)
+                widget.setMaximumSize(0, 0)
+                
+        # Atualiza a geometria e força a janela a encolher apenas na vertical, preservando a largura atual
+        QApplication.processEvents()
+        _main_window.resize(_main_window.width(), 0)
+            
     _main_window.mainTabWidget.currentChanged.connect(on_tab_changed)
     
     # Initialize the correct state for the current tab
@@ -410,6 +425,14 @@ def _on_load() -> None:
     _main_window.heightField.setValue(_settings.load("split_height"))
     _main_window.runProcessCheckbox.setChecked(_settings.load("run_postprocess"))
     _main_window.runComicZipCheckbox.setChecked(_settings.load("run_comiczip"))
+    _main_window.waifuOnlyCheckbox.setChecked(_settings.load("waifu_only"))
+    
+    last_preset = _settings.load("last_preset", default="type")
+    if last_preset == "redraw":
+        _main_window.redrawButton.setChecked(True)
+    else:
+        _main_window.typeButton.setChecked(True)
+        
     _main_window.loginSiteCombo.setCurrentText(_settings.load("last_login_site"))
     def on_login_site_changed(text):
         if text == "Piccoma":
@@ -421,6 +444,12 @@ def _on_load() -> None:
         elif text == "Mediocretoons":
             _main_window.loginEmailInput.setText(_settings.load("mediocre_email"))
             _main_window.loginPassInput.setText(_settings.load("mediocre_password"))
+        elif text == "Empreguetes":
+            _main_window.loginEmailInput.setText(_settings.load("empreguetes_email"))
+            _main_window.loginPassInput.setText(_settings.load("empreguetes_password"))
+        elif text == "Tiraninha":
+            _main_window.loginEmailInput.setText(_settings.load("tiraninha_email"))
+            _main_window.loginPassInput.setText(_settings.load("tiraninha_password"))
 
     on_login_site_changed(_main_window.loginSiteCombo.currentText())
     _main_window.parallelProcessingCheckbox.setChecked(
@@ -464,6 +493,9 @@ def _bind_signals() -> None:
     w.runComicZipCheckbox.stateChanged.connect(
         lambda: _settings.save("run_comiczip", w.runComicZipCheckbox.isChecked())
     )
+    w.waifuOnlyCheckbox.stateChanged.connect(
+        lambda: _settings.save("waifu_only", w.waifuOnlyCheckbox.isChecked())
+    )
     def on_login_site_changed(text):
         _settings.save("last_login_site", text)
         if text == "Piccoma":
@@ -475,6 +507,12 @@ def _bind_signals() -> None:
         elif text == "Mediocretoons":
             _main_window.loginEmailInput.setText(_settings.load("mediocre_email"))
             _main_window.loginPassInput.setText(_settings.load("mediocre_password"))
+        elif text == "Empreguetes":
+            _main_window.loginEmailInput.setText(_settings.load("empreguetes_email"))
+            _main_window.loginPassInput.setText(_settings.load("empreguetes_password"))
+        elif text == "Tiraninha":
+            _main_window.loginEmailInput.setText(_settings.load("tiraninha_email"))
+            _main_window.loginPassInput.setText(_settings.load("tiraninha_password"))
 
     w.loginSiteCombo.currentTextChanged.connect(on_login_site_changed)
 
@@ -486,6 +524,10 @@ def _bind_signals() -> None:
             _settings.save("verdinha_email", text)
         elif site == "Mediocretoons":
             _settings.save("mediocre_email", text)
+        elif site == "Empreguetes":
+            _settings.save("empreguetes_email", text)
+        elif site == "Tiraninha":
+            _settings.save("tiraninha_email", text)
 
     def on_login_pass_changed(text):
         site = w.loginSiteCombo.currentText()
@@ -495,6 +537,10 @@ def _bind_signals() -> None:
             _settings.save("verdinha_password", text)
         elif site == "Mediocretoons":
             _settings.save("mediocre_password", text)
+        elif site == "Empreguetes":
+            _settings.save("empreguetes_password", text)
+        elif site == "Tiraninha":
+            _settings.save("tiraninha_password", text)
 
     w.loginEmailInput.textChanged.connect(on_login_email_changed)
     w.loginPassInput.textChanged.connect(on_login_pass_changed)
@@ -623,11 +669,11 @@ def _apply_type_preset() -> None:
     _save_preset({
         "output_type": ".webp",
         "lossy_quality": 100,
-        "split_height": 15000,
         "enforce_type": 2,
         "enforce_width": 800,
         "detector_type": 0,
         "postprocess_args": WAIFU_ARGS_WEBP,
+        "last_preset": "type",
     })
 
 
@@ -635,7 +681,6 @@ def _apply_redraw_preset() -> None:
     _save_preset({
         "output_type": ".jpg",
         "lossy_quality": 100,
-        "split_height": 15000,
         "enforce_type": 2,
         "enforce_width": 800,
         "detector_type": 1,
@@ -643,6 +688,7 @@ def _apply_redraw_preset() -> None:
         "scan_step": 10,
         "ignorable_pixels": 0,
         "postprocess_args": WAIFU_ARGS_JPG,
+        "last_preset": "redraw",
     })
 
 

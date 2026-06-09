@@ -62,14 +62,25 @@ class ComixScraper(BaseScraper):
             
             def handle_route(route):
                 req_url = route.request.url
-                if '/chapters' in req_url and 'limit=' in req_url:
+                # Block ads and trackers to speed up load significantly
+                if any(x in req_url for x in ["google-analytics", "doubleclick", "adsystem", "quantserve", "facebook", "hotjar"]):
+                    route.abort()
+                elif '/chapters' in req_url and 'limit=' in req_url:
                     req_url = re.sub(r'limit=\d+', 'limit=100', req_url)
                     route.continue_(url=req_url)
                 else:
                     route.continue_()
             page.route("**/*", handle_route)
             
-            page.goto(url, wait_until="domcontentloaded")
+            try:
+                page.goto(url, wait_until="commit", timeout=20000)
+            except Exception:
+                pass
+            
+            try:
+                page.wait_for_load_state("domcontentloaded", timeout=10000)
+            except Exception:
+                pass
             
             # Anti-Cloudflare simple bypass
             for i in range(10):
@@ -80,50 +91,49 @@ class ComixScraper(BaseScraper):
                 time.sleep(2)
             
             # Fallback to HTML if API failed
-            api_chapters = []
-            page_count = 1
-            
-            while True:
-                print(f"Lendo página {page_count} dos capítulos...")
-                html = page.content()
-                soup = BeautifulSoup(html, 'html.parser')
-                items = soup.find_all(class_=re.compile('mchap-item|mchap-row'))
-                
-                for item in items:
-                    link_tag = item.find('a', class_=re.compile('primary|chapter'))
-                    if not link_tag:
-                        links = item.find_all('a', href=re.compile('chapter-'))
-                        if links: link_tag = links[0]
-                        
-                    if link_tag and link_tag.get('href') and 'chapter-' in link_tag.get('href'):
-                        href = link_tag['href']
-                        full_link = f"https://comix.to{href}" if href.startswith('/') else href
-                        group_tag = item.find('a', class_=re.compile('group'))
-                        group_name = group_tag.get_text(strip=True) if group_tag else "Padrão"
-                        
-                        # Use a very basic number extraction for sorting
-                        num = 0.0
-                        num_match = re.search(r'chapter-(\d+(?:\.\d+)?)', href)
-                        if num_match:
-                            num = float(num_match.group(1))
-                            
-                        api_chapters.append({
-                            'num': num,
-                            'url': full_link,
-                            'group': group_name
-                        })
-                        
-                # Procurar botão de próxima página
-                try:
-                    next_btn = page.query_selector('button[aria-label*="Next"]')
-                    if not next_btn or next_btn.is_disabled():
-                        break
+            if not api_chapters:
+                page_count = 1
+                while True:
+                    print(f"Lendo página {page_count} dos capítulos...")
+                    html = page.content()
+                    soup = BeautifulSoup(html, 'html.parser')
+                    items = soup.find_all(class_=re.compile('mchap-item|mchap-row'))
                     
-                    next_btn.click(force=True)
-                    time.sleep(1.5) # Esperar o React renderizar a nova página
-                    page_count += 1
-                except Exception as e:
-                    break
+                    for item in items:
+                        link_tag = item.find('a', class_=re.compile('primary|chapter'))
+                        if not link_tag:
+                            links = item.find_all('a', href=re.compile('chapter-'))
+                            if links: link_tag = links[0]
+                            
+                        if link_tag and link_tag.get('href') and 'chapter-' in link_tag.get('href'):
+                            href = link_tag['href']
+                            full_link = f"https://comix.to{href}" if href.startswith('/') else href
+                            group_tag = item.find('a', class_=re.compile('group'))
+                            group_name = group_tag.get_text(strip=True) if group_tag else "Padrão"
+                            
+                            # Use a very basic number extraction for sorting
+                            num = 0.0
+                            num_match = re.search(r'chapter-(\d+(?:\.\d+)?)', href)
+                            if num_match:
+                                num = float(num_match.group(1))
+                                
+                            api_chapters.append({
+                                'num': num,
+                                'url': full_link,
+                                'group': group_name
+                            })
+                            
+                    # Procurar botão de próxima página
+                    try:
+                        next_btn = page.query_selector('button[aria-label*="Next"]')
+                        if not next_btn or next_btn.is_disabled():
+                            break
+                        
+                        next_btn.click(force=True)
+                        time.sleep(1.5) # Esperar o React renderizar a nova página
+                        page_count += 1
+                    except Exception as e:
+                        break
                     
             browser.close()
             
@@ -186,10 +196,16 @@ class ComixScraper(BaseScraper):
                     apply(target, thisArg, args) {
                         const parsed = Reflect.apply(target, thisArg, args);
                         try {
-                            if (parsed && parsed.result && parsed.result.pages) {
-                                window.__interceptedImages = parsed.result.pages;
-                            } else if (parsed && parsed.chapter && parsed.chapter.images) {
-                                window.__interceptedImages = parsed.chapter.images;
+                            if (parsed) {
+                                if (parsed.result && parsed.result.pages) {
+                                    window.__interceptedImages = parsed.result.pages;
+                                } else if (parsed.chapter && parsed.chapter.images) {
+                                    window.__interceptedImages = parsed.chapter.images;
+                                } else if (parsed.images) {
+                                    window.__interceptedImages = parsed.images;
+                                } else if (parsed.pages) {
+                                    window.__interceptedImages = parsed.pages;
+                                }
                             }
                         } catch (e) {}
                         return parsed;
@@ -197,7 +213,33 @@ class ComixScraper(BaseScraper):
                 });
             """)
             
-            page.goto(chapter_url, wait_until="domcontentloaded")
+            # Also capture via Network response events (newer fetch APIs use response.json() bypassing JSON.parse)
+            def handle_chapter_response(response):
+                if '/chapter/' in response.url and 'api/v1' in response.url:
+                    try:
+                        parsed = response.json()
+                        if parsed:
+                            if parsed.get('result', {}).get('pages'):
+                                page.evaluate("val => { window.__interceptedImages = val; }", parsed['result']['pages'])
+                            elif parsed.get('chapter', {}).get('images'):
+                                page.evaluate("val => { window.__interceptedImages = val; }", parsed['chapter']['images'])
+                            elif parsed.get('images'):
+                                page.evaluate("val => { window.__interceptedImages = val; }", parsed['images'])
+                            elif parsed.get('pages'):
+                                page.evaluate("val => { window.__interceptedImages = val; }", parsed['pages'])
+                    except Exception:
+                        pass
+            page.on('response', handle_chapter_response)
+            
+            try:
+                page.goto(chapter_url, wait_until="commit", timeout=20000)
+            except Exception:
+                pass
+            
+            try:
+                page.wait_for_load_state("domcontentloaded", timeout=10000)
+            except Exception:
+                pass
             
             # Anti-Cloudflare simple bypass
             for i in range(10):
@@ -218,19 +260,21 @@ class ComixScraper(BaseScraper):
                 if pages_data:
                     if isinstance(pages_data, dict):
                         base_url = pages_data.get('baseUrl', '').rstrip('/')
-                        for item in pages_data.get('items', []):
+                        for index, item in enumerate(pages_data.get('items', [])):
                             u = item.get('url', '')
                             if u:
                                 full_url = u if u.startswith('http') else f"{base_url}/{u.lstrip('/')}"
-                                if item.get('s') == 1:
+                                is_scrambled = item.get('s') == 1 or (index + 1) % 4 == 0
+                                if is_scrambled:
                                     full_url += "#scrambled"
                                 api_images.append(full_url)
                     elif isinstance(pages_data, list):
-                        for item in pages_data:
+                        for index, item in enumerate(pages_data):
                             u = item.get('url', '')
                             if u:
                                 full_url = u
-                                if item.get('s') == 1:
+                                is_scrambled = item.get('s') == 1 or (index + 1) % 4 == 0
+                                if is_scrambled:
                                     full_url += "#scrambled"
                                 api_images.append(full_url)
             except Exception as e:
@@ -242,27 +286,26 @@ class ComixScraper(BaseScraper):
                 
             # FALLBACK: O Comix carrega as imagens via scroll (lazy load)
             print("Interceptação JSON falhou. Usando scroll manual...")
-            for _ in range(150):
-                page.evaluate("window.scrollBy(0, 1000)")
-                time.sleep(0.3)
+            for _ in range(80):
+                page.evaluate("window.scrollBy(0, 1500)")
+                time.sleep(0.25)
                 is_bottom = page.evaluate("window.scrollY + window.innerHeight >= document.body.scrollHeight")
                 if is_bottom:
-                    # Tentar esperar para ver se mais imagens carregam no final
                     time.sleep(1)
-                    is_bottom_after = page.evaluate("window.scrollY + window.innerHeight >= document.body.scrollHeight")
-                    if is_bottom_after:
-                        break
+                    break
                         
-            time.sleep(1)
+            time.sleep(1.5)
             
             # Coletar as imagens renderizadas
             try:
                 images = page.evaluate('''() => {
                     const imgs = Array.from(document.querySelectorAll('img'));
-                    return imgs.map(img => img.src || img.getAttribute('data-src')).filter(src => {
+                    return imgs.map(img => img.getAttribute('data-src') || img.getAttribute('data-srcset') || img.src || img.getAttribute('src')).filter(src => {
                         if (!src) return false;
                         const low = src.toLowerCase();
-                        return low.includes('.jpg') || low.includes('.png') || low.includes('.jpeg') || low.includes('.webp');
+                        // Ignore small placeholders/avatars/icons
+                        if (low.includes('avatar') || low.includes('logo') || low.includes('icon') || low.includes('profile')) return false;
+                        return low.includes('.jpg') || low.includes('.png') || low.includes('.jpeg') || low.includes('.webp') || src.startsWith('data:image');
                     });
                 }''')
             except Exception:
@@ -294,13 +337,38 @@ class ComixScraper(BaseScraper):
         req = urllib.request.Request(clean_url, headers=self.headers)
         with urllib.request.urlopen(req) as response:
             data = response.read()
-            seed = response.headers.get("x-scramble-seed")
             
-            if is_scrambled and seed and int(seed) != 0:
-                self._descramble_and_save(data, int(seed), output_path)
+            # Check for the brand new x-enc-seed / x-enc-len headers (from Tachiyomi/Keiyoushi updates)
+            enc_seed = response.headers.get("x-enc-seed")
+            enc_len = response.headers.get("x-enc-len")
+            scramble_seed = response.headers.get("x-scramble-seed")
+            
+            if enc_seed and enc_len and int(enc_seed) != 0:
+                # Decrypt using the new LCG byte-stream method
+                decrypted_data = self._decrypt_enc_bytes(data, int(enc_seed), int(enc_len))
+                with open(output_path, 'wb') as f:
+                    f.write(decrypted_data)
+            elif is_scrambled and scramble_seed and int(scramble_seed) != 0:
+                # Fallback to the old grid-based descrambler
+                self._descramble_and_save(data, int(scramble_seed), output_path)
             else:
                 with open(output_path, 'wb') as f:
                     f.write(data)
+
+    def _decrypt_enc_bytes(self, data: bytes, seed: int, length: int) -> bytes:
+        # Kotlin equivalent of the Descrambler LCG logic:
+        # Each byte in the scrambled data is XORed with (current_seed ushr 24) & 0xFF
+        # and current_seed is updated using current_seed = current_seed * ENC_MULTIPLIER + ENC_INCREMENT
+        state = seed & 0xFFFFFFFF
+        decrypted = bytearray(data)
+        
+        limit = min(len(data), max(0, length))
+        for idx in range(limit):
+            state = (state * 1000005 + 1234567891) & 0xFFFFFFFF
+            key_byte = (state >> 24) & 0xFF
+            decrypted[idx] = data[idx] ^ key_byte
+            
+        return bytes(decrypted)
 
     def _descramble_and_save(self, image_bytes, seed, output_path):
         from PIL import Image

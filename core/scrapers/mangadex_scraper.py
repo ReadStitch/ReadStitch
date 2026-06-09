@@ -29,7 +29,25 @@ class MangadexScraper(BaseScraper):
             return match.group(1)
         return None
 
-    def get_chapters(self, series_url: str) -> List[str]:
+    SUPPORTED_LANGUAGES = {
+        "Português (BR)": "pt-br",
+        "Português (PT)": "pt",
+        "Inglês": "en",
+        "Espanhol (ES)": "es",
+        "Espanhol (LATAM)": "es-la",
+        "Japonês": "ja",
+        "Coreano": "ko",
+        "Chinês (Simplificado)": "zh",
+        "Chinês (Tradicional)": "zh-hk",
+        "Francês": "fr",
+        "Italiano": "it",
+        "Alemão": "de",
+        "Russo": "ru",
+        "Árabe": "ar",
+        "Auto (pt-br → pt → en)": "auto",
+    }
+
+    def get_chapters(self, series_url: str, language: str = "auto") -> List[str]:
         print(f"[{self.__class__.__name__}] Fetching series page: {series_url}")
         series_id = self._extract_uuid(series_url)
         if not series_id:
@@ -38,28 +56,28 @@ class MangadexScraper(BaseScraper):
 
         print(f"[{self.__class__.__name__}] Found Manga ID: {series_id}")
 
-        # Fallback language strategy: pt-br -> pt -> en
-        target_langs = ["pt-br", "pt", "en"]
-        all_chapters_data = []
-
-        # Find the first language that has chapters
-        selected_lang = None
-        for lang in target_langs:
-            url = f"{self.api_url}/manga/{series_id}/feed?translatedLanguage[]={lang}&limit=1"
-            try:
-                data = self._get_json(url)
-                if data.get("total", 0) > 0:
-                    selected_lang = lang
-                    break
-            except Exception as e:
-                pass
-        
-        if not selected_lang:
-            print(f"[{self.__class__.__name__}] Could not find chapters in any target language (pt-br, pt, en). Falling back to en.")
-            selected_lang = "en"
+        if language == "auto":
+            # Fallback language strategy: pt-br -> pt -> en
+            target_langs = ["pt-br", "pt", "en"]
+            selected_lang = None
+            for lang in target_langs:
+                url = f"{self.api_url}/manga/{series_id}/feed?translatedLanguage[]={lang}&limit=1"
+                try:
+                    data = self._get_json(url)
+                    if data.get("total", 0) > 0:
+                        selected_lang = lang
+                        break
+                except Exception:
+                    pass
+            if not selected_lang:
+                print(f"[{self.__class__.__name__}] No chapters found in pt-br/pt/en. Falling back to en.")
+                selected_lang = "en"
+        else:
+            selected_lang = language
 
         print(f"[{self.__class__.__name__}] Fetching chapters for language: {selected_lang}")
 
+        all_chapters_data = []
         offset = 0
         limit = 500
         while True:
@@ -111,6 +129,11 @@ class MangadexScraper(BaseScraper):
                 
         print(f"[{self.__class__.__name__}] Found {len(chapter_urls)} unique chapters.")
         return chapter_urls
+
+    def get_chapter_groups(self, series_url: str, language: str = "auto", progress_callback=None) -> dict:
+        """Overrides base to accept an optional language parameter from the GUI."""
+        chapters = self.get_chapters(series_url, language=language)
+        return {"Padrão": chapters}
 
     def get_chapter_images(self, chapter_url: str) -> List[str]:
         print(f"[{self.__class__.__name__}] Fetching images for chapter: {chapter_url}")

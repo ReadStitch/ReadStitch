@@ -106,4 +106,31 @@ class PostProcessRunner:
             stdout_pipe.close()
         return_code = proc.wait()
         if return_code:
+            # Check if waifu2x failed due to Vulkan/GPU driver issues (often exit code 3221225477 or 4294967295)
+            # If so, try falling back to CPU mode using '-g -1' if not already specified.
+            is_waifu = any("waifu2x" in part.lower() for part in command)
+            has_cpu_flag = "-g" in command or any(part.startswith("-g") for part in command)
+            if is_waifu and not has_cpu_flag:
+                console_func("\n[Aviso] Falha de GPU/Vulkan detectada no Waifu2X (código {}). Tentando novamente em modo CPU...\n".format(return_code))
+                cpu_command = list(command)
+                cpu_command.extend(["-g", "-1"])
+                proc_cpu = subprocess.Popen(
+                    cpu_command,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    encoding="utf-8",
+                    errors="replace",
+                    universal_newlines=True,
+                    shell=False,
+                    **_build_popen_kwargs(),
+                )
+                stdout_pipe_cpu = proc_cpu.stdout
+                if stdout_pipe_cpu is not None:
+                    for line in stdout_pipe_cpu:
+                        console_func(line)
+                    stdout_pipe_cpu.close()
+                return_code_cpu = proc_cpu.wait()
+                if not return_code_cpu:
+                    console_func("\nPost process finished successfully using CPU!\n")
+                    return
             raise subprocess.CalledProcessError(return_code, command)

@@ -27,12 +27,20 @@ from .vegitoons_scraper import VegitoonsScraper
 from .hipercool_scraper import HipercoolScraper
 
 from .verdinha_scraper import VerdinhaScraper
+from .empreguetes_scraper import EmpreguetesScraper
 from .mediocre_scraper import MediocreScraper
 from .kagane_scraper import KaganeScraper
+from .tiraninha_scraper import TiraninhaScraper
+from .onereader_scraper import OneReaderScraper
+from .manhastro_scraper import ManhastroScraper
 
 def get_scraper_for_url(url):
     url_lower = url.lower()
-    if 'webtoons.com' in url_lower:
+    if 'onereader.net' in url_lower:
+        return OneReaderScraper()
+    elif 'manhastro.net' in url_lower or 'manhastro' in url_lower:
+        return ManhastroScraper()
+    elif 'webtoons.com' in url_lower:
         return WebtoonScraper()
     elif 'kakao.com' in url_lower:
         return KakaoScraper()
@@ -78,8 +86,12 @@ def get_scraper_for_url(url):
         return VerdinhaScraper()
     elif 'mediocrescan.com' in url_lower or 'mediocre' in url_lower:
         return MediocreScraper()
+    elif 'empreguetes.wtf' in url_lower or 'empreguetes' in url_lower:
+        return EmpreguetesScraper()
     elif 'kagane.org' in url_lower or 'kagane' in url_lower:
         return KaganeScraper()
+    elif 'tiraninha.world' in url_lower or 'tiraninha' in url_lower:
+        return TiraninhaScraper()
     elif 'flamecomics' in url_lower:
         from .flamecomics_scraper import FlameComicsScraper
         return FlameComicsScraper()

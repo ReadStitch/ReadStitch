@@ -56,8 +56,8 @@ class WebtoonScraper(BaseScraper):
             
         def get_chap_num(url):
             try:
-                match = re.search(r'episode_no=(\d+)', url)
-                return int(match.group(1)) if match else 0
+                match = re.search(r'episode_no=(\d+(?:\.\d+)?)', url)
+                return float(match.group(1)) if match else 0.0
             except:
                 return 0
                 
