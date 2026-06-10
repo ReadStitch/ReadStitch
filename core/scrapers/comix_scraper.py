@@ -428,3 +428,31 @@ class ComixScraper(BaseScraper):
                 output = bg
                 
             output.save(output_path, format="JPEG", quality=90)
+
+    def download_chapter(self, chapter_url, output_dir, chapter_name, max_workers=5):
+        import os
+        import concurrent.futures
+        
+        target_dir = os.path.join(output_dir, chapter_name)
+        os.makedirs(target_dir, exist_ok=True)
+        
+        images = self.get_chapter_images(chapter_url)
+        if not images:
+            return 0
+            
+        def _download(args):
+            idx, url = args
+            filepath = os.path.join(target_dir, f"{idx+1:03d}.jpg")
+            if not os.path.exists(filepath):
+                try:
+                    self.download_image(url, filepath)
+                except Exception as e:
+                    import logging
+                    logging.getLogger(__name__).error(f"Erro ao baixar {url}: {e}")
+                    return None
+            return filepath
+            
+        with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+            list(executor.map(_download, enumerate(images)))
+            
+        return len(images)

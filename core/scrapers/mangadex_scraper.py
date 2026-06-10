@@ -13,9 +13,11 @@ class MangadexScraper(BaseScraper):
         super().__init__()
         self.base_url = "https://mangadex.org"
         self.api_url = "https://api.mangadex.org"
-        self._headers = {
+        self.headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Referer": "https://mangadex.org/",
         }
+        self._headers = self.headers
 
     def _get_json(self, url: str) -> dict:
         req = urllib.request.Request(url, headers=self._headers)
@@ -88,9 +90,11 @@ class MangadexScraper(BaseScraper):
                 "offset": str(offset)
             }
             url = f"{self.api_url}/manga/{series_id}/feed?" + urllib.parse.urlencode(params)
+            print("URL:", url)
             
             try:
                 data = self._get_json(url)
+                print("Total items:", data.get("total"))
             except Exception as e:
                 print(f"[{self.__class__.__name__}] API Error fetching chapters: {e}")
                 break
