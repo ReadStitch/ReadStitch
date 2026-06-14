@@ -24,8 +24,12 @@ from core.utils.constants import OUTPUT_SUFFIX
 from gui.build_version import APP_BUILD_VERSION
 from gui.process import GuiStitchProcess
 
-_SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-_PROJECT_ROOT = os.path.dirname(_SCRIPT_DIR)
+if getattr(sys, 'frozen', False):
+    _SCRIPT_DIR = os.path.join(sys._MEIPASS, "gui")
+    _PROJECT_ROOT = sys._MEIPASS
+else:
+    _SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+    _PROJECT_ROOT = os.path.dirname(_SCRIPT_DIR)
 
 
 def _load_app_version() -> str:
