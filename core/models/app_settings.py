@@ -30,6 +30,7 @@ class AppSettings:
     postprocess_args: str = ""
     run_comiczip: bool = False
     waifu_only: bool = False
+    waifu_hardware_index: int = 0
     parallel_processing: bool = True
     last_browse_location: str = ""
     download_dir: str = "C:/Manhwa/Downloads"
@@ -43,6 +44,8 @@ class AppSettings:
     mediocre_password: str = ""
     tiraninha_email: str = ""
     tiraninha_password: str = ""
+    comikey_email: str = ""
+    comikey_password: str = ""
     last_login_site: str = "Piccoma"
 
     gemini_api_key: str = ""

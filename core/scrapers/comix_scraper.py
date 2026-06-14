@@ -83,12 +83,14 @@ class ComixScraper(BaseScraper):
                 pass
             
             # Anti-Cloudflare simple bypass
-            for i in range(10):
+            for i in range(30):
                 title = page.title()
-                if not ("Just a moment" in title or "Cloudflare" in title or "Attention Required" in title):
+                if not ("Just a moment" in title or "Cloudflare" in title or "Attention Required" in title or "Um momento" in title or "Verificando" in title):
                     break
                 page.mouse.move(150 + i*10, 150 + i*10)
                 time.sleep(2)
+                
+            time.sleep(4)
             
             # Fallback to HTML if API failed
             if not api_chapters:
@@ -242,9 +244,9 @@ class ComixScraper(BaseScraper):
                 pass
             
             # Anti-Cloudflare simple bypass
-            for i in range(10):
+            for i in range(30):
                 title = page.title()
-                if not ("Just a moment" in title or "Cloudflare" in title or "Attention Required" in title):
+                if not ("Just a moment" in title or "Cloudflare" in title or "Attention Required" in title or "Um momento" in title or "Verificando" in title):
                     break
                 page.mouse.move(150 + i*10, 150 + i*10)
                 time.sleep(2)

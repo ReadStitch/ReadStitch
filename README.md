@@ -1,5 +1,5 @@
 <div align="center">
-  <a href="https://github.com/devjohnatas/ReadStitch">
+  <a href="https://github.com/ReadStitch/ReadStitch">
     <img alt="ReadStitch Logo" width="180" src="assets/ReadStitchLogo.png">
   </a>
 
@@ -7,11 +7,11 @@
   <p><strong>A fusão entre SmartStitch e Waifu2x para Webtoons, Manhwas e Manhuas</strong><br/>Baixe raws, una imagens, corte capítulos e melhore a qualidade com upscaling — tudo em um só lugar.</p>
 
   <p>
-    <a href="https://github.com/devjohnatas/ReadStitch/releases/latest"><img src="https://img.shields.io/github/v/release/devjohnatas/ReadStitch?label=release" alt="Latest Release"></a>
-    <a href="https://github.com/devjohnatas/ReadStitch/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/devjohnatas/ReadStitch/ci.yml?label=ci" alt="CI"></a>
-    <a href="https://github.com/devjohnatas/ReadStitch/actions/workflows/build.yml"><img src="https://img.shields.io/github/actions/workflow/status/devjohnatas/ReadStitch/build.yml?label=release" alt="Release Workflow"></a>
-    <a href="https://github.com/devjohnatas/ReadStitch/releases"><img src="https://img.shields.io/github/downloads/devjohnatas/ReadStitch/total" alt="Downloads"></a>
-    <a href="https://github.com/devjohnatas/ReadStitch/blob/master/LICENSE"><img src="https://img.shields.io/github/license/devjohnatas/ReadStitch" alt="License"></a>
+    <a href="https://github.com/ReadStitch/ReadStitch/releases/latest"><img src="https://img.shields.io/github/v/release/ReadStitch/ReadStitch?label=release" alt="Latest Release"></a>
+    <a href="https://github.com/ReadStitch/ReadStitch/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/ReadStitch/ReadStitch/ci.yml?label=ci" alt="CI"></a>
+    <a href="https://github.com/ReadStitch/ReadStitch/actions/workflows/build.yml"><img src="https://img.shields.io/github/actions/workflow/status/ReadStitch/ReadStitch/build.yml?label=release" alt="Release Workflow"></a>
+    <a href="https://github.com/ReadStitch/ReadStitch/releases"><img src="https://img.shields.io/github/downloads/ReadStitch/ReadStitch/total" alt="Downloads"></a>
+    <a href="https://github.com/ReadStitch/ReadStitch/blob/master/LICENSE"><img src="https://img.shields.io/github/license/ReadStitch/ReadStitch" alt="License"></a>
   </p>
 </div>
 
@@ -85,7 +85,7 @@ Baixe capítulos diretamente dos principais sites de leitura:
 
 > 💡 **Sites com login** exigem que você informe suas credenciais na aba **Baixador → Credenciais de Acesso**. O site é detectado automaticamente pela URL colada — não é necessário selecionar manualmente!
 
-> 💡 **Quer pedir suporte para um novo site?** [Abra uma Issue](https://github.com/devjohnatas/ReadStitch/issues) descrevendo o site e ela será avaliada!
+> 💡 **Quer pedir suporte para um novo site?** [Abra uma Issue](https://github.com/ReadStitch/ReadStitch/issues) descrevendo o site e ela será avaliada!
 
 ### 🧵 Unir e Cortar (Stitch + Slice)
 Baseado no **SmartStitch**, o ReadStitch une imagens menores em uma tira longa e depois as fatia em dimensões ideais para leitura — evitando cortes no meio de painéis ou caixas de texto.
@@ -111,7 +111,7 @@ Baseado no **Waifu2x-Extension-GUI**, o ReadStitch aplica upscaling de imagens c
 ## Como Utilizar
 
 ### Interface Gráfica (Releases)
-1. Acesse a seção de [Releases](https://github.com/devjohnatas/ReadStitch/releases) e faça o download da versão mais recente.
+1. Acesse a seção de [Releases](https://github.com/ReadStitch/ReadStitch/releases) e faça o download da versão mais recente.
 2. Descompacte o arquivo e inicie o executável `ReadStitch.exe`.
 3. Use a aba de **Download** para baixar raws de um site suportado.
 4. Use a aba de **Processamento** para unir, cortar e aplicar upscaling nos capítulos.
@@ -120,7 +120,7 @@ Baseado no **Waifu2x-Extension-GUI**, o ReadStitch aplica upscaling de imagens c
 1. Instale o Python 3.11 ou superior.
 2. Clone o repositório, crie um ambiente virtual e instale as dependências:
    ```bash
-   git clone https://github.com/devjohnatas/ReadStitch.git
+   git clone https://github.com/ReadStitch/ReadStitch.git
    cd ReadStitch
    
    # Crie o ambiente virtual
@@ -173,8 +173,8 @@ python ReadStitchConsole.py [-h] -i INPUT_FOLDER -sh SPLIT_HEIGHT
 
 O ReadStitch é um projeto de código aberto. Toda contribuição é bem-vinda!
 
-- 🐛 **Relatar Problemas:** Crie uma [Issue](https://github.com/devjohnatas/ReadStitch/issues) descrevendo o problema, incluindo os passos de reprodução e os logs da pasta `__logs__`.
-- 🌐 **Pedir Novo Site:** Quer que um site específico seja suportado no downloader? [Abra uma Issue](https://github.com/devjohnatas/ReadStitch/issues) com o nome e URL do site.
+- 🐛 **Relatar Problemas:** Crie uma [Issue](https://github.com/ReadStitch/ReadStitch/issues) descrevendo o problema, incluindo os passos de reprodução e os logs da pasta `__logs__`.
+- 🌐 **Pedir Novo Site:** Quer que um site específico seja suportado no downloader? [Abra uma Issue](https://github.com/ReadStitch/ReadStitch/issues) com o nome e URL do site.
 - 💡 **Sugestões:** Novas funcionalidades e melhorias são sempre bem-vindas no painel de Issues.
 - 🔧 **Pull Requests:** Contribuições diretas no código podem ser feitas via Pull Request na branch principal.
 

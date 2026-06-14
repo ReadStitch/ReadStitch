@@ -33,6 +33,7 @@ from .kagane_scraper import KaganeScraper
 from .tiraninha_scraper import TiraninhaScraper
 from .onereader_scraper import OneReaderScraper
 from .manhastro_scraper import ManhastroScraper
+from .comikey_scraper import ComikeyScraper
 
 def get_scraper_for_url(url):
     url_lower = url.lower()
@@ -46,7 +47,7 @@ def get_scraper_for_url(url):
         return KakaoScraper()
     elif 'utoon.net' in url_lower:
         return UtoonScraper()
-    elif 'qimanhwa.com' in url_lower:
+    elif 'qimanhwa.com' in url_lower or 'qimanga.com' in url_lower:
         return QiScraper()
     elif 'vortexscans.org' in url_lower or 'hivetoons.org' in url_lower:
         return VortexScraper()
@@ -92,6 +93,8 @@ def get_scraper_for_url(url):
         return KaganeScraper()
     elif 'tiraninha.world' in url_lower or 'tiraninha' in url_lower:
         return TiraninhaScraper()
+    elif 'comikey.com' in url_lower or 'comikey' in url_lower:
+        return ComikeyScraper()
     elif 'flamecomics' in url_lower:
         from .flamecomics_scraper import FlameComicsScraper
         return FlameComicsScraper()

@@ -52,16 +52,16 @@ def _load_app_version() -> str:
     return APP_BUILD_VERSION or "0.0.0"
 
 WAIFU_ZIP_URL = (
-    "https://github.com/devjohnatas/ReadStitch/releases/download/waifu2x/Waifu2X.zip"
+    "https://github.com/ReadStitch/ReadStitch/releases/download/waifu2x/Waifu2X.zip"
 )
 WAIFU_INSTALL_DIR = "C:/Manhwa/Waifu2X"
 WAIFU_EXE_PATH = os.path.join(WAIFU_INSTALL_DIR, "waifu2x-ncnn-vulkan.exe")
 WAIFU_ARGS_JPG = "-i [stitched] -o [processed] -n 3 -s 1 -f jpg"
 WAIFU_ARGS_WEBP = "-i [stitched] -o [processed] -n 3 -s 1 -f webp"
 APP_NAME = "ReadStitch"
-APP_VENDOR = "devjohnatas"
+APP_VENDOR = "ReadStitch"
 APP_VERSION = _load_app_version()
-GITHUB_REPO = "devjohnatas/ReadStitch"
+GITHUB_REPO = "ReadStitch/ReadStitch"
 GITHUB_RELEASES_URL = f"https://github.com/{GITHUB_REPO}/releases/latest"
 GITHUB_API_LATEST_URL = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
 AUTO_CHECK_UPDATES_ON_STARTUP = True
@@ -450,6 +450,9 @@ def _on_load() -> None:
         elif text == "Tiraninha":
             _main_window.loginEmailInput.setText(_settings.load("tiraninha_email"))
             _main_window.loginPassInput.setText(_settings.load("tiraninha_password"))
+        elif text == "Comikey":
+            _main_window.loginEmailInput.setText(_settings.load("comikey_email"))
+            _main_window.loginPassInput.setText(_settings.load("comikey_password"))
 
     on_login_site_changed(_main_window.loginSiteCombo.currentText())
     _main_window.parallelProcessingCheckbox.setChecked(
@@ -458,7 +461,8 @@ def _on_load() -> None:
     # Watermark settings
     _main_window.watermarkFullpageEnabledCheckbox.setChecked(_settings.load("watermark_fullpage_enabled"))
     _main_window.watermarkFullpagePathField.setText(_settings.load("watermark_fullpage_paths"))
-    _main_window.watermarkFullpageThresholdSpin.setValue(_settings.load("watermark_fullpage_threshold"))
+    _main_window.watermarkFullpageThresholdSpin.setValue(int(_settings.load("watermark_fullpage_threshold", 200)))
+
     _main_window.watermarkFullpageMaxSpin.setValue(_settings.load("watermark_fullpage_max_per_page"))
     _main_window.watermarkFullpageInsertModeCheckbox.setChecked(_settings.load("watermark_fullpage_insert_mode"))
     _main_window.watermarkFullpageMinAreaSpin.setValue(_settings.load("watermark_fullpage_min_area_height"))
@@ -513,6 +517,9 @@ def _bind_signals() -> None:
         elif text == "Tiraninha":
             _main_window.loginEmailInput.setText(_settings.load("tiraninha_email"))
             _main_window.loginPassInput.setText(_settings.load("tiraninha_password"))
+        elif text == "Comikey":
+            _main_window.loginEmailInput.setText(_settings.load("comikey_email"))
+            _main_window.loginPassInput.setText(_settings.load("comikey_password"))
 
     w.loginSiteCombo.currentTextChanged.connect(on_login_site_changed)
 
@@ -528,6 +535,8 @@ def _bind_signals() -> None:
             _settings.save("empreguetes_email", text)
         elif site == "Tiraninha":
             _settings.save("tiraninha_email", text)
+        elif site == "Comikey":
+            _settings.save("comikey_email", text)
 
     def on_login_pass_changed(text):
         site = w.loginSiteCombo.currentText()
@@ -541,6 +550,8 @@ def _bind_signals() -> None:
             _settings.save("empreguetes_password", text)
         elif site == "Tiraninha":
             _settings.save("tiraninha_password", text)
+        elif site == "Comikey":
+            _settings.save("comikey_password", text)
 
     w.loginEmailInput.textChanged.connect(on_login_email_changed)
     w.loginPassInput.textChanged.connect(on_login_pass_changed)
@@ -616,6 +627,7 @@ def _bind_signals() -> None:
             _toggle_footer_options(w.watermarkFooterEnabledCheckbox.isChecked())
         ]
     )
+
     w.watermarkFooterPathField.textChanged.connect(
         lambda: _settings.save("watermark_footer_paths", w.watermarkFooterPathField.text())
     )
@@ -690,6 +702,14 @@ def _apply_redraw_preset() -> None:
         "postprocess_args": WAIFU_ARGS_JPG,
         "last_preset": "redraw",
     })
+
+
+def _load_preset(preset_name: str):
+    preset = _presets.get(preset_name)
+    if not preset:
+        return
+    _settings.save_current_settings(AppSettings(preset))
+    _load_all()
 
 
 def _download_and_extract_waifu2x(*, repair: bool) -> None:
