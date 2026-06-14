@@ -277,7 +277,6 @@
             </widget>
            </item>
            <item>
-           <item>
             <widget class="QCheckBox" name="runComicZipCheckbox">
              <property name="text">
               <string>Zipar após o pós-processamento</string>
