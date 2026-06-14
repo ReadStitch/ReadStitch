@@ -13,7 +13,7 @@ import zipfile
 import winreg
 from typing import Any, Callable
 
-from PySide6.QtCore import QEvent, QObject, Qt, QThread, Signal, QTimer
+from PySide6.QtCore import QEvent, QFile, QIODevice, QObject, Qt, QThread, Signal, QTimer
 from PySide6.QtGui import QIcon, QPixmap
 from PySide6.QtUiTools import QUiLoader
 from PySide6.QtWidgets import QApplication, QDialog, QFileDialog, QMessageBox, QProgressDialog, QSizePolicy
@@ -178,7 +178,17 @@ def initialize_gui(
     global _folder_drop_filter, _auto_close_on_finish
     global _job_queue, _job_running
 
-    _main_window = QUiLoader().load(os.path.join(_SCRIPT_DIR, "layout.ui"))
+    ui_path = os.path.join(_SCRIPT_DIR, "layout.ui")
+    if not os.path.exists(ui_path):
+        raise RuntimeError(f"layout.ui not found at: {ui_path}")
+    ui_file = QFile(ui_path)
+    if not ui_file.open(QIODevice.OpenModeFlag.ReadOnly):
+        raise RuntimeError(f"Unable to open layout.ui at: {ui_path}")
+    loader = QUiLoader()
+    _main_window = loader.load(ui_file)
+    ui_file.close()
+    if _main_window is None:
+        raise RuntimeError(f"QUiLoader failed to load layout.ui. Error: {loader.errorString()}")
     _settings = SettingsHandler()
 
     _settings.save("postprocess_app", WAIFU_EXE_PATH)
