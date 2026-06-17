@@ -218,8 +218,8 @@ class WatermarkService:
         # Vetorizado: min/max por linha em 2 operações numpy vs ~H/step chamadas no loop original
         row_min = img_array.min(axis=1)   # shape (height,)
         row_max = img_array.max(axis=1)   # shape (height,)
-        is_white_row = (row_min == 255) & (row_max == 255)
-        is_black_row = (row_min == 0) & (row_max == 0)
+        is_white_row = (row_min >= threshold)
+        is_black_row = (row_max <= (255 - threshold))
         is_uniform = is_white_row | is_black_row
 
         # Encontra runs contíguas usando np.diff (sem loop Python por linha)
