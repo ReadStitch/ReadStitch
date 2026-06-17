@@ -37,19 +37,15 @@ Baixe capítulos diretamente dos principais sites de leitura:
 <tr>
 <td valign="top">
 
-#### 🌐 Sites em Inglês (EN)
+#### 🇺🇸 Sites em Inglês (EN)
 
 | Site | Suporte |
 |---|---|
 | [Asura Scans](https://asuracomic.net) | ✅ |
-| [Kakao Webtoon](https://webtoon.kakao.com) | ✅ |
-| [Naver Webtoon](https://comic.naver.com) | ✅ |
 | [Webtoon (LINE)](https://www.webtoons.com) | ✅ |
 | [QisManga](https://qismanga.com) | ✅ |
 | [Comix](https://comix.jp) | ✅ |
-| [Vortex Scans](https://vortexscans.org) | ✅ |
-| [HiveToons](https://hivetoons.org) | ✅ |
-| [Piccoma](https://piccoma.com) | ✅ *(login)* |
+| [Vortex / HiveToons](https://vortexscans.org) | ✅ |
 | [Kagane](https://kagane.org) | ✅ |
 | [Utoon](https://utoon.net) | ✅ |
 | [GenzToons](https://genztoons.org) | ✅ |
@@ -59,11 +55,13 @@ Baixe capítulos diretamente dos principais sites de leitura:
 | [ResetScans](https://reset-scans.org) | ✅ |
 | [MangaDex](https://mangadex.org) | ✅ |
 | [Elftoon](https://elftoon.com) | ✅ |
+| [Comikey](https://comikey.com) | ✅ |
+| [EzManga](https://ezmanga.org) | ✅ |
 
 </td>
 <td valign="top">
 
-#### 🇧🇷 Sites em Português (BR)
+#### 🇧🇷 Sites em Português (PT-BR)
 
 | Site | Suporte |
 |---|---|
@@ -78,6 +76,33 @@ Baixe capítulos diretamente dos principais sites de leitura:
 | Hipercool | ✅ |
 | Vegitoons | ✅ |
 | Astratoons | ✅ |
+| Safire Scan | ✅ |
+| Empreguetes | ✅ |
+| Manhastro | ✅ |
+| Tiraninha | ✅ |
+| OneReader | ✅ |
+| Blackout Comics | ✅ |
+
+</td>
+</tr>
+<tr>
+<td valign="top">
+
+#### 🇰🇷 Sites Coreanos (KR)
+
+| Site | Suporte |
+|---|---|
+| [Kakao Webtoon](https://webtoon.kakao.com) | ✅ |
+| [Naver Webtoon](https://comic.naver.com) | ✅ |
+
+</td>
+<td valign="top">
+
+#### 🇯🇵 Sites Japoneses (JP)
+
+| Site | Suporte |
+|---|---|
+| [Piccoma](https://piccoma.com) | ✅ *(login)* |
 
 </td>
 </tr>

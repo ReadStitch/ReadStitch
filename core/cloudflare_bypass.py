@@ -87,35 +87,34 @@ def solve_cloudflare(url: str, on_success=None, on_error=None):
                 )
                 page = context.new_page()
 
-                print(f"[CloudflareBypass] Opening browser for {url}")
+                print(f"[CloudflareBypass] Opening browser for {url}. Please solve captcha/login and close the window when done.")
                 page.goto(url)
 
-                # Wait for Cloudflare challenge to clear.
-                # We detect success when the page title is no longer "Just a moment..."
-                max_wait = 120  # seconds
+                # Keep browser open until user closes it. Save cookies every 2 seconds.
+                max_wait = 600  # 10 minutes max
                 elapsed = 0
-                passed = False
+                last_cookies = []
+                
                 while elapsed < max_wait:
-                    time.sleep(1)
-                    elapsed += 1
+                    time.sleep(2)
+                    elapsed += 2
                     try:
-                        title = page.title()
-                        # Cloudflare challenge page titles
-                        if "just a moment" not in title.lower() and "verificando" not in title.lower():
-                            passed = True
+                        if not browser.is_connected() or len(context.pages) == 0:
                             break
+                            
+                        # Save cookies periodically while open
+                        last_cookies = context.cookies()
+                        save_cookies(domain, last_cookies)
                     except Exception:
-                        pass
+                        break
 
-                if passed:
-                    cookies = context.cookies()
-                    save_cookies(domain, cookies)
-                    print(f"[CloudflareBypass] Cookies saved for {domain} ({len(cookies)} cookies)")
+                if last_cookies:
+                    print(f"[CloudflareBypass] Cookies saved for {domain} ({len(last_cookies)} cookies)")
                     if on_success:
-                        on_success(domain, cookies)
+                        on_success(domain, last_cookies)
                 else:
                     if on_error:
-                        on_error("Tempo esgotado aguardando a verificação do Cloudflare.")
+                        on_error("Nenhum cookie foi salvo ou a janela foi fechada rápido demais.")
 
                 browser.close()
 

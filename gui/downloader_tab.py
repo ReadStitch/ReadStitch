@@ -118,7 +118,7 @@ class DownloaderController(QObject):
         langLayout.addWidget(QLabel("Idioma:"))
         self.langCombo = QComboBox()
         # Importa os idiomas do scraper
-        from core.scrapers.mangadex_scraper import MangadexScraper
+        from core.scrapers.en.mangadex_scraper import MangadexScraper
         self._mangadex_langs = MangadexScraper.SUPPORTED_LANGUAGES
         self.langCombo.addItems(list(self._mangadex_langs.keys()))
         self.langCombo.setCurrentText("Auto (pt-br → pt → en)")
@@ -239,6 +239,8 @@ class DownloaderController(QObject):
             site = "Empreguetes"
         elif "tiraninha" in url_lower:
             site = "Tiraninha"
+        elif "blackoutcomics" in url_lower:
+            site = "Blackout Comics"
         else:
             return  # URL não reconhecida — não mexe no combo
 

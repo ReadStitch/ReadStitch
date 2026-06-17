@@ -181,12 +181,9 @@ def initialize_gui(
     ui_path = os.path.join(_SCRIPT_DIR, "layout.ui")
     if not os.path.exists(ui_path):
         raise RuntimeError(f"layout.ui not found at: {ui_path}")
-    ui_file = QFile(ui_path)
-    if not ui_file.open(QIODevice.OpenModeFlag.ReadOnly):
-        raise RuntimeError(f"Unable to open layout.ui at: {ui_path}")
+    
     loader = QUiLoader()
-    _main_window = loader.load(ui_file)
-    ui_file.close()
+    _main_window = loader.load(ui_path)
     if _main_window is None:
         raise RuntimeError(f"QUiLoader failed to load layout.ui. Error: {loader.errorString()}")
     _settings = SettingsHandler()
@@ -467,6 +464,9 @@ def _on_load() -> None:
         elif text == "Comikey":
             _main_window.loginEmailInput.setText(_settings.load("comikey_email"))
             _main_window.loginPassInput.setText(_settings.load("comikey_password"))
+        elif text == "Blackout Comics":
+            _main_window.loginEmailInput.setText(_settings.load("blackout_email"))
+            _main_window.loginPassInput.setText(_settings.load("blackout_password"))
 
     on_login_site_changed(_main_window.loginSiteCombo.currentText())
     _main_window.parallelProcessingCheckbox.setChecked(
@@ -534,6 +534,9 @@ def _bind_signals() -> None:
         elif text == "Comikey":
             _main_window.loginEmailInput.setText(_settings.load("comikey_email"))
             _main_window.loginPassInput.setText(_settings.load("comikey_password"))
+        elif text == "Blackout Comics":
+            _main_window.loginEmailInput.setText(_settings.load("blackout_email"))
+            _main_window.loginPassInput.setText(_settings.load("blackout_password"))
 
     w.loginSiteCombo.currentTextChanged.connect(on_login_site_changed)
 
@@ -551,6 +554,10 @@ def _bind_signals() -> None:
             _settings.save("tiraninha_email", text)
         elif site == "Comikey":
             _settings.save("comikey_email", text)
+        elif site == "Blackout Comics":
+            _settings.save("blackout_email", text)
+        elif site == "Blackout Comics":
+            _settings.save("blackout_email", text)
 
     def on_login_pass_changed(text):
         site = w.loginSiteCombo.currentText()
@@ -566,6 +573,10 @@ def _bind_signals() -> None:
             _settings.save("tiraninha_password", text)
         elif site == "Comikey":
             _settings.save("comikey_password", text)
+        elif site == "Blackout Comics":
+            _settings.save("blackout_password", text)
+        elif site == "Blackout Comics":
+            _settings.save("blackout_password", text)
 
     w.loginEmailInput.textChanged.connect(on_login_email_changed)
     w.loginPassInput.textChanged.connect(on_login_pass_changed)

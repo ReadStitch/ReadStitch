@@ -46,6 +46,8 @@ class AppSettings:
     tiraninha_password: str = ""
     comikey_email: str = ""
     comikey_password: str = ""
+    blackout_email: str = ""
+    blackout_password: str = ""
     last_login_site: str = "Piccoma"
 
     gemini_api_key: str = ""
