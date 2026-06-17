@@ -663,7 +663,7 @@ def _bind_signals() -> None:
 
 
 def _browse_images(target_field) -> None:
-    """Open a file dialog to select one or more image files and append to the target field."""
+    """Open a file dialog to select one or more image files and set to the target field."""
     files, _ = QFileDialog.getOpenFileNames(
         _main_window,
         "Selecionar imagens",
@@ -671,10 +671,7 @@ def _browse_images(target_field) -> None:
         "Images (*.png *.jpg *.jpeg *.webp *.bmp)",
     )
     if files:
-        existing = (target_field.text() or "").strip()
-        paths = [p for p in existing.split(";") if p.strip()] if existing else []
-        paths.extend(files)
-        target_field.setText(";".join(paths))
+        target_field.setText(";".join(files))
 
 
 def _input_field_changed() -> None:
