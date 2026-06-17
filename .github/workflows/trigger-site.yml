@@ -1,0 +1,16 @@
+name: Trigger Site Update
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  notify-site:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send update signal to ReadStitchWeb
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.SITE_DISPATCH_TOKEN }}
+          repository: ReadStitch/ReadStitchWeb
+          event-type: update-site
