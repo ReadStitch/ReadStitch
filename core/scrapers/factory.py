@@ -1,4 +1,5 @@
 from .en.asura_scraper import AsuraScraper
+from .pt_br.tiamanhwa_scraper import TiaManhwaScraper
 from .en.utoon_scraper import UtoonScraper
 from .en.qi_scraper import QiScraper
 from .en.vortex_scraper import VortexScraper
@@ -81,7 +82,7 @@ def get_scraper_for_url(url):
         return NexusScraper()
     elif 'vegitoons' in url_lower:
         return VegitoonsScraper()
-    elif 'hiper.cool' in url_lower or 'hipercool' in url_lower:
+    elif 'hiper.cool' in url_lower or 'hipercool' in url_lower or 'lerhentais' in url_lower or 'hipertoon' in url_lower:
         return HipercoolScraper()
     elif 'verdinha.wtf' in url_lower or 'verdinha' in url_lower:
         return VerdinhaScraper()
@@ -95,6 +96,12 @@ def get_scraper_for_url(url):
         return TiraninhaScraper()
     elif 'safirescan.site' in url_lower or 'safirescan.xyz' in url_lower or 'safirescan' in url_lower:
         return SafireScanScraper()
+    elif 'sushiscan.net' in url_lower or 'sushiscan' in url_lower:
+        return SushiScanScraper()
+    elif 'tiamanhwa.com' in url_lower or 'tiamanhwa' in url_lower:
+        return TiaManhwaScraper()
+    elif 'zinmanga.com' in url_lower or 'zinmanga' in url_lower:
+        return EzmangaScraper()
     elif 'comikey.com' in url_lower or 'comikey' in url_lower:
         return ComikeyScraper()
     elif 'ezmanga.org' in url_lower or 'ezmanga' in url_lower:
@@ -110,5 +117,8 @@ def get_scraper_for_url(url):
     elif 'elftoon.com' in url_lower or 'elftoon' in url_lower:
         from .en.elftoon_scraper import ElftoonScraper
         return ElftoonScraper()
+    elif 'erosect.xyz' in url_lower or 'erosect' in url_lower:
+        from .pt_br.erosect_scraper import ErosectScraper
+        return ErosectScraper()
     # Default to Asura
     return AsuraScraper()

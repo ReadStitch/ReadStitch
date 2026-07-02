@@ -14,7 +14,7 @@ class MangadexScraper(BaseScraper):
         self.base_url = "https://mangadex.org"
         self.api_url = "https://api.mangadex.org"
         self.headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "User-Agent": "ReadStitch/1.0",
             "Referer": "https://mangadex.org/",
         }
         self._headers = self.headers
@@ -48,6 +48,31 @@ class MangadexScraper(BaseScraper):
         "Árabe": "ar",
         "Auto (pt-br → pt → en)": "auto",
     }
+
+    def get_available_languages(self, series_url: str) -> dict:
+        """Busca na API os idiomas atualmente disponíveis e filtra o SUPPORTED_LANGUAGES."""
+        series_id = self._extract_uuid(series_url)
+        if not series_id:
+            return self.SUPPORTED_LANGUAGES
+
+        url = f"{self.api_url}/manga/{series_id}"
+        try:
+            data = self._get_json(url)
+            available = data.get("data", {}).get("attributes", {}).get("availableTranslatedLanguages", [])
+            
+            # Filtra o dicionário principal para conter apenas idiomas disponíveis + Auto
+            filtered = {}
+            for name, code in self.SUPPORTED_LANGUAGES.items():
+                if code == "auto" or code in available:
+                    filtered[name] = code
+                    
+            if not filtered:
+                return self.SUPPORTED_LANGUAGES
+            return filtered
+        except Exception as e:
+            print(f"[{self.__class__.__name__}] Failed to fetch available languages: {e}")
+            return self.SUPPORTED_LANGUAGES
+
 
     def get_chapters(self, series_url: str, language: str = "auto") -> List[str]:
         print(f"[{self.__class__.__name__}] Fetching series page: {series_url}")

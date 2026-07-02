@@ -12,11 +12,12 @@ class FetchThread(QThread):
     error = Signal(str)
     progress = Signal(str)
 
-    def __init__(self, url, language=None):
+    def __init__(self, url, language=None, credentials=None):
         super().__init__()
         self.url = url
         self.language = language
         self.scraper = get_scraper_for_url(url)
+        self.scraper.credentials = credentials
 
     def run(self):
         try:
@@ -32,18 +33,35 @@ class FetchThread(QThread):
         except Exception as e:
             self.error.emit(str(e))
 
+class FetchLanguagesThread(QThread):
+    finished = Signal(dict)
+    
+    def __init__(self, url):
+        super().__init__()
+        self.url = url
+        self.scraper = get_scraper_for_url(url)
+        
+    def run(self):
+        try:
+            if hasattr(self.scraper, "get_available_languages"):
+                langs = self.scraper.get_available_languages(self.url)
+                self.finished.emit(langs)
+        except Exception:
+            pass
+
 class DownloadThread(QThread):
     progress = Signal(int, int) # current, total
     log = Signal(str)
     success = Signal(str)
     error = Signal(str)
 
-    def __init__(self, chapters, output_dir, series_name, url):
+    def __init__(self, chapters, output_dir, series_name, url, credentials=None):
         super().__init__()
         self.chapters = chapters
         self.output_dir = output_dir
         self.series_name = series_name
         self.scraper = get_scraper_for_url(url)
+        self.scraper.credentials = credentials
 
     def run(self):
         try:
@@ -228,6 +246,15 @@ class DownloaderController(QObject):
         is_cloudflare_site = "manhastro.net" in url_lower
         self.langWidget.setVisible(is_mangadex)
         self.cfBypassWidget.setVisible(is_cloudflare_site)
+        
+        if is_mangadex:
+            self.langCombo.clear()
+            self.langCombo.addItem("Carregando idiomas...")
+            self.langCombo.setEnabled(False)
+            
+            self.fetch_lang_thread = FetchLanguagesThread(url)
+            self.fetch_lang_thread.finished.connect(self.on_languages_fetched)
+            self.fetch_lang_thread.start()
 
         if "piccoma" in url_lower:
             site = "Piccoma"
@@ -241,6 +268,8 @@ class DownloaderController(QObject):
             site = "Tiraninha"
         elif "blackoutcomics" in url_lower:
             site = "Blackout Comics"
+        elif "tiamanhwa" in url_lower:
+            site = "Tia Manhwa"
         else:
             return  # URL não reconhecida — não mexe no combo
 
@@ -248,6 +277,16 @@ class DownloaderController(QObject):
         idx = combo.findText(site)
         if idx >= 0 and combo.currentIndex() != idx:
             combo.setCurrentIndex(idx)  # Isso vai disparar on_login_site_changed automaticamente
+
+    def on_languages_fetched(self, langs_dict):
+        self.langCombo.clear()
+        self.langCombo.setEnabled(True)
+        self._mangadex_langs = langs_dict
+        self.langCombo.addItems(list(self._mangadex_langs.keys()))
+        if "Auto (pt-br → pt → en)" in self._mangadex_langs:
+            self.langCombo.setCurrentText("Auto (pt-br → pt → en)")
+        elif self._mangadex_langs:
+            self.langCombo.setCurrentIndex(0)
 
     def _solve_cloudflare(self):
         """Abre o navegador Playwright para o usuário resolver o desafio do Cloudflare."""
@@ -348,7 +387,12 @@ class DownloaderController(QObject):
         self.dlStatusLabel.setText("Buscando capítulos...")
         self.dlProgressBar.setVisible(False)
 
-        self.fetch_thread = FetchThread(url, language=self._get_selected_language())
+        # Capturar credenciais de login caso existam
+        email = self.w.loginEmailInput.text().strip()
+        password = self.w.loginPassInput.text().strip()
+        credentials = (email, password) if (email and password) else None
+
+        self.fetch_thread = FetchThread(url, language=self._get_selected_language(), credentials=credentials)
         self.fetch_thread.finished.connect(self.on_fetch_success)
         self.fetch_thread.error.connect(self.on_fetch_error)
         self.fetch_thread.progress.connect(lambda msg: self.dlStatusLabel.setText(msg))
@@ -479,7 +523,12 @@ class DownloaderController(QObject):
         self.dlProgressBar.setValue(0)
         self.dlStatusLabel.setText("Iniciando download...")
 
-        self.download_thread = DownloadThread(selected, out_dir, series_name, url)
+        # Capturar credenciais de login caso existam
+        email = self.w.loginEmailInput.text().strip()
+        password = self.w.loginPassInput.text().strip()
+        credentials = (email, password) if (email and password) else None
+
+        self.download_thread = DownloadThread(selected, out_dir, series_name, url, credentials=credentials)
         self.download_thread.progress.connect(self.on_dl_progress)
         self.download_thread.log.connect(self.on_dl_log)
         self.download_thread.success.connect(self.on_dl_success)

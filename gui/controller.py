@@ -537,6 +537,9 @@ def _bind_signals() -> None:
         elif text == "Blackout Comics":
             _main_window.loginEmailInput.setText(_settings.load("blackout_email"))
             _main_window.loginPassInput.setText(_settings.load("blackout_password"))
+        elif text == "Asura Scans":
+            _main_window.loginEmailInput.setText(_settings.load("asura_email"))
+            _main_window.loginPassInput.setText(_settings.load("asura_password"))
 
     w.loginSiteCombo.currentTextChanged.connect(on_login_site_changed)
 
@@ -556,8 +559,8 @@ def _bind_signals() -> None:
             _settings.save("comikey_email", text)
         elif site == "Blackout Comics":
             _settings.save("blackout_email", text)
-        elif site == "Blackout Comics":
-            _settings.save("blackout_email", text)
+        elif site == "Asura Scans":
+            _settings.save("asura_email", text)
 
     def on_login_pass_changed(text):
         site = w.loginSiteCombo.currentText()
@@ -575,8 +578,8 @@ def _bind_signals() -> None:
             _settings.save("comikey_password", text)
         elif site == "Blackout Comics":
             _settings.save("blackout_password", text)
-        elif site == "Blackout Comics":
-            _settings.save("blackout_password", text)
+        elif site == "Asura Scans":
+            _settings.save("asura_password", text)
 
     w.loginEmailInput.textChanged.connect(on_login_email_changed)
     w.loginPassInput.textChanged.connect(on_login_pass_changed)
