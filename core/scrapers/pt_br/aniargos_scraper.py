@@ -88,6 +88,14 @@ class AniArgosScraper(BaseScraper):
             page = context.new_page()
             page.goto(url)
             page.wait_for_timeout(2000) # Espera carregar o React
+            
+            # Tenta clicar na aba "Capítulos" se existir, para forçar renderização
+            try:
+                page.evaluate("() => { const tabs = Array.from(document.querySelectorAll('button, a, div.cursor-pointer, li')).filter(el => el.textContent.includes('Capítulos')); if(tabs.length) tabs[0].click(); }")
+                page.wait_for_timeout(2000)
+            except:
+                pass
+                
             html = page.content()
             browser.close()
             return html
@@ -96,7 +104,19 @@ class AniArgosScraper(BaseScraper):
         logger.info(f"[{self.name}] Fetching chapters from: {series_url}")
         
         if 'Cookie' not in self.headers or 'access_token' not in self.headers['Cookie']:
-            raise Exception("Necessário preencher o login e senha no Baixador para o site AniArgos.")
+            try:
+                from core.services.settings_handler import SettingsHandler
+                settings = SettingsHandler()
+                email = settings.load("aniargos_email")
+                password = settings.load("aniargos_password")
+                
+                if not email or not password:
+                    raise Exception("Necessário preencher o login e senha no Baixador para o site AniArgos.")
+                    
+                self.login(email, password)
+            except Exception as e:
+                logger.error(f"[{self.name}] Erro ao tentar login automático: {e}")
+                raise Exception(f"Erro de login: {e}")
             
         try:
             html = self._get_page_content_with_playwright(series_url)
@@ -109,7 +129,6 @@ class AniArgosScraper(BaseScraper):
             
             if not chapters_paths:
                 # Procura no estado do next_f
-                import re
                 chapters_paths = re.findall(r'\\"href\\":\\"(/[^"\']+capitulo/[0-9.]+)\\"', html)
             
             if not chapters_paths:
@@ -123,6 +142,13 @@ class AniArgosScraper(BaseScraper):
                 # Tenta match em URLs brutos Next.js (slug/capitulo/num)
                 m = re.findall(r'/[^"\'\\]+/[^"\'\\]+/capitulo/[0-9.]+', html)
                 chapters_paths.extend(m)
+                
+            # Filtra apenas os links que pertencem à obra (evita pegar de "recomendados" no sidebar)
+            import urllib.parse
+            parsed_url = urllib.parse.urlparse(series_url)
+            slug = parsed_url.path.strip('/').split('/')[-1]
+            if slug:
+                chapters_paths = [p for p in chapters_paths if slug in p]
                 
             chapters_paths = list(set(chapters_paths))
             
@@ -145,6 +171,21 @@ class AniArgosScraper(BaseScraper):
     def get_chapter_images(self, chapter_url):
         logger.info(f"[{self.name}] Fetching images from: {chapter_url}")
         
+        if 'Cookie' not in self.headers or 'access_token' not in self.headers['Cookie']:
+            try:
+                from core.services.settings_handler import SettingsHandler
+                settings = SettingsHandler()
+                email = settings.load("aniargos_email")
+                password = settings.load("aniargos_password")
+                
+                if not email or not password:
+                    raise Exception("Necessário preencher o login e senha no Baixador para o site AniArgos.")
+                    
+                self.login(email, password)
+            except Exception as e:
+                logger.error(f"[{self.name}] Erro ao tentar login automático: {e}")
+                raise Exception(f"Erro de login: {e}")
+                
         try:
             html = self._get_page_content_with_playwright(chapter_url)
             

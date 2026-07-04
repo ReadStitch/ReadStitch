@@ -48,6 +48,10 @@ class AppSettings:
     comikey_password: str = ""
     blackout_email: str = ""
     blackout_password: str = ""
+    aniargos_email: str = ""
+    aniargos_password: str = ""
+    asura_email: str = ""
+    asura_password: str = ""
     last_login_site: str = "Piccoma"
 
     gemini_api_key: str = ""
