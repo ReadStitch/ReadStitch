@@ -15,7 +15,7 @@ class MediocreScraper(BaseScraper):
     def __init__(self):
         super().__init__()
         self.base_url = "https://mediocrescan.com"
-        self.api_url = "https://back.mediocrescan.com"
+        self.api_url = "https://back2.mediocrescan.com"
         self.cdn_url = "https://cdn.mediocrescan.com"
         self.headers.update({
             'Accept': 'application/json',
@@ -58,10 +58,12 @@ class MediocreScraper(BaseScraper):
             logger.error(f"[{self.name}] Falha no login HTTPError {e.code}: {error_body}")
             if e.code == 401 or e.code == 400:
                 raise Exception("Falha de autenticação: E-mail ou Senha inválidos.")
-            raise Exception("Falha de autenticação. Verifique suas credenciais.")
+            elif e.code in (502, 503, 521, 522):
+                raise Exception("O site MediocreToons está em manutenção ou fora do ar no momento. Tente novamente mais tarde.")
+            raise Exception(f"Erro ao conectar com MediocreToons (HTTP {e.code}).")
         except Exception as e:
             logger.error(f"[{self.name}] Falha no login Exception: {e}")
-            raise Exception("Falha de autenticação. Verifique suas credenciais.")
+            raise Exception(f"Erro inesperado ao conectar com MediocreToons: {e}")
 
     def has_active_login(self):
         return self.token is not None

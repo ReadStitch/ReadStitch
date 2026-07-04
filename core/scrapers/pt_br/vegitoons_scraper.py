@@ -16,7 +16,7 @@ class VegitoonsScraper(BaseScraper):
         super().__init__()
         self.base_url = "https://vegitoons.black"
         self.api_url = "https://api.vegitoons.black"
-        self.cdn_url = "https://cdn.verdinha.wtf"
+        self.cdn_url = "https://cdn.vegitoons.black"
         self.cdn_api_url = "https://api.vegitoons.black/cdn"
         self.headers.update({
             'Accept': 'application/json',

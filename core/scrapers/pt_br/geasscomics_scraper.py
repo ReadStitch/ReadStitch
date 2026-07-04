@@ -16,7 +16,7 @@ class GeassComicsScraper(BaseScraper):
     def __init__(self):
         super().__init__()
         self.base_url = "https://geasscomics.xyz"
-        self.api_url = "https://api.skkyscan.fun"
+        self.api_url = "https://api.geasscomics.xyz"
         self.headers.update({
             'Referer': f"{self.base_url}/",
             'Origin': self.base_url,
@@ -31,45 +31,38 @@ class GeassComicsScraper(BaseScraper):
 
     def get_chapters(self, series_url):
         logger.info(f"[{self.name}] Fetching chapters from: {series_url}")
-        
-        # Extrai o slug da URL da série
-        # Ex: https://geasscomics.xyz/obra/nome-da-obra
-        parts = [p for p in series_url.split('?')[0].split('/') if p]
-        slug = parts[-1]
-        
         try:
-            # 1. Pega os detalhes do mangá para obter o ID
-            details_url = f"{self.api_url}/api/mangas/{slug}"
-            details_data = self._fetch_json(details_url)
-            manga_id = details_data.get('data', {}).get('id')
-            
-            if not manga_id:
-                raise Exception("Manga ID não encontrado na resposta.")
+            req = urllib.request.Request(series_url, headers=self.headers)
+            with urllib.request.urlopen(req) as response:
+                html = response.read().decode('utf-8')
                 
-            # 2. Pega a lista de capítulos usando paginação
-            all_chapters = []
-            current_page = 1
-            has_more = True
+            import re
+            # Extrai hrefs de capítulos do HTML renderizado pelo Next.js
+            # Ex: \"href\":\"/read/criador-de-lendas-urbanas/1\"
+            chapters_paths = re.findall(r'\\"href\\":\\"(/read/[^/]+/[0-9.]+)\\"', html)
             
-            while has_more:
-                chapters_url = f"{self.api_url}/api/chapters?mangaId={manga_id}&page={current_page}&limit=100&order=desc"
-                chapters_data = self._fetch_json(chapters_url)
+            if not chapters_paths:
+                # Fallback, tenta procurar por /obra/ caso mude
+                chapters_paths = re.findall(r'\\"href\\":\\"(/obra/[^/]+/[0-9.]+)\\"', html)
                 
-                items = chapters_data.get('data', [])
-                for item in items:
-                    chap_num = item.get('chapterNumber')
-                    chap_id = item.get('id')
+            if not chapters_paths:
+                logger.warning(f"[{self.name}] Nenhum capítulo encontrado.")
+                return []
+                
+            # Remove duplicatas
+            chapters_paths = list(set(chapters_paths))
+            
+            def get_num(path):
+                try:
+                    return float(path.split('/')[-1])
+                except:
+                    return 0
                     
-                    if chap_num is not None and chap_id:
-                        # Precisamos salvar o chapter ID na URL para poder pegar as imagens depois
-                        url = f"{self.base_url}/ler/{slug}/{chap_num}#chapterId={chap_id}"
-                        all_chapters.append(url)
-                
-                pagination = chapters_data.get('pagination', {})
-                # Checa se há próxima página comparando a página atual com o total
-                has_more = current_page < pagination.get('totalPages', 1)
-                current_page += 1
-                
+            # Ordena decrescente (do mais novo pro mais antigo, como padrão)
+            chapters_paths = sorted(chapters_paths, key=get_num, reverse=True)
+            
+            all_chapters = [f"{self.base_url}{path}" for path in chapters_paths]
+            
             logger.info(f"[{self.name}] Encontrados {len(all_chapters)} capítulos")
             return all_chapters
             
@@ -79,35 +72,31 @@ class GeassComicsScraper(BaseScraper):
 
     def get_chapter_images(self, chapter_url):
         logger.info(f"[{self.name}] Fetching images from: {chapter_url}")
-        
         try:
-            # Extrai o chapterId que colocamos no final da URL
-            if '#chapterId=' not in chapter_url:
-                raise Exception("Chapter ID ausente na URL")
+            req = urllib.request.Request(chapter_url, headers=self.headers)
+            with urllib.request.urlopen(req) as response:
+                html = response.read().decode('utf-8')
                 
-            chapter_id = chapter_url.split('#chapterId=')[1]
+            import re
+            import json
             
-            # Chama a API do capítulo para obter as imagens
-            api_chap_url = f"{self.api_url}/api/chapters/{chapter_id}"
-            chap_data = self._fetch_json(api_chap_url)
-            
-            pages = chap_data.get('data', {}).get('pages', [])
-            if not pages:
-                raise Exception("O capítulo não possui imagens acessíveis")
+            # Extrai o array JSON de páginas injetado no HTML
+            m = re.search(r'\\"pages\\":(\[.*?\])', html)
+            if not m:
+                raise Exception("Não foi possível encontrar as imagens na página do capítulo.")
                 
-            # Ordena as páginas pelo pageNumber
-            pages = sorted(pages, key=lambda x: x.get('pageNumber', 0))
+            pages_str = m.group(1).replace('\\"', '"')
+            images_list = json.loads(pages_str)
             
             images = []
-            for p in pages:
-                img_path = p.get('imageUrl')
-                if img_path:
-                    # Se o img_path já vier com http, não concatena
-                    if img_path.startswith('http'):
-                        images.append(img_path)
-                    else:
-                        images.append(f"{self.api_url}{img_path}")
-                        
+            for img in images_list:
+                if img.startswith('http'):
+                    images.append(img)
+                elif img.startswith('//'):
+                    images.append(f"https:{img}")
+                else:
+                    images.append(f"https://cdn.geasscomics.xyz{img}")
+                    
             logger.info(f"[{self.name}] Encontradas {len(images)} imagens")
             return images
             
