@@ -120,5 +120,8 @@ def get_scraper_for_url(url):
     elif 'erosect.xyz' in url_lower or 'erosect' in url_lower:
         from .pt_br.erosect_scraper import ErosectScraper
         return ErosectScraper()
+    elif 'aniargos.com' in url_lower or 'aniargos' in url_lower:
+        from .pt_br.aniargos_scraper import AniArgosScraper
+        return AniArgosScraper()
     # Default to Asura
     return AsuraScraper()

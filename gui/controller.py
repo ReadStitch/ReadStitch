@@ -467,6 +467,12 @@ def _on_load() -> None:
         elif text == "Blackout Comics":
             _main_window.loginEmailInput.setText(_settings.load("blackout_email"))
             _main_window.loginPassInput.setText(_settings.load("blackout_password"))
+        elif text == "AniArgos":
+            _main_window.loginEmailInput.setText(_settings.load("aniargos_email"))
+            _main_window.loginPassInput.setText(_settings.load("aniargos_password"))
+        elif text == "Asura Scans":
+            _main_window.loginEmailInput.setText(_settings.load("asura_email"))
+            _main_window.loginPassInput.setText(_settings.load("asura_password"))
 
     on_login_site_changed(_main_window.loginSiteCombo.currentText())
     _main_window.parallelProcessingCheckbox.setChecked(
@@ -537,6 +543,9 @@ def _bind_signals() -> None:
         elif text == "Blackout Comics":
             _main_window.loginEmailInput.setText(_settings.load("blackout_email"))
             _main_window.loginPassInput.setText(_settings.load("blackout_password"))
+        elif text == "AniArgos":
+            _main_window.loginEmailInput.setText(_settings.load("aniargos_email"))
+            _main_window.loginPassInput.setText(_settings.load("aniargos_password"))
         elif text == "Asura Scans":
             _main_window.loginEmailInput.setText(_settings.load("asura_email"))
             _main_window.loginPassInput.setText(_settings.load("asura_password"))
@@ -559,6 +568,8 @@ def _bind_signals() -> None:
             _settings.save("comikey_email", text)
         elif site == "Blackout Comics":
             _settings.save("blackout_email", text)
+        elif site == "AniArgos":
+            _settings.save("aniargos_email", text)
         elif site == "Asura Scans":
             _settings.save("asura_email", text)
 
@@ -578,6 +589,8 @@ def _bind_signals() -> None:
             _settings.save("comikey_password", text)
         elif site == "Blackout Comics":
             _settings.save("blackout_password", text)
+        elif site == "AniArgos":
+            _settings.save("aniargos_password", text)
         elif site == "Asura Scans":
             _settings.save("asura_password", text)
 
