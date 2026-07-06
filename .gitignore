@@ -6,7 +6,7 @@ __logs__/
 __settings__/
 *.pickle
 *.log
-ReadStitch.spec
+*.spec
 
 Waifu2X/
 

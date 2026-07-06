@@ -132,17 +132,44 @@ class UtoonScraper(BaseScraper):
         if "chapter-" in series_url or "/chapter" in series_url:
             return [series_url]
             
-        try:
-            html = self._get_page_content_with_playwright(series_url, wait_selector='.wp-manga-chapter')
-        except Exception as e:
-            raise Exception(f"Failed to fetch Utoon series: {e}")
-
-        parts = [p for p in series_url.split('/') if p]
-        slug = parts[-1] if parts else ""
-        
-        soup = BeautifulSoup(html, 'html.parser')
+        import re, json
         links = set()
         
+        # O Utoon tem um script com a lista de capítulos (incluindo pagos) num JSON no código-fonte.
+        # Como o Playwright pega o DOM renderizado (ou via AJAX) e o script pode ser removido,
+        # fazemos uma requisição pura (urllib) para pegar o HTML intocado.
+        import urllib.request
+        try:
+            req = urllib.request.Request(series_url, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'})
+            raw_html = urllib.request.urlopen(req, timeout=10).read().decode('utf-8', errors='ignore')
+            for match in re.finditer(r'\[\{\"id\":.*?\}\]', raw_html):
+                try:
+                    chaps_data = json.loads(match.group(0))
+                    for c in chaps_data:
+                        if 'url' in c:
+                            links.add(c['url'])
+                except:
+                    pass
+        except Exception as e:
+            print(f"[UtoonScraper] Aviso: Falha na requisição direta (possível Cloudflare). Erro: {e}")
+            
+        # Se encontrou links via JSON, já podemos retornar!
+        if links:
+            def extract_num(path):
+                m = re.search(r'chapter-(\d+(?:\.\d+)?)', path)
+                return float(m.group(1)) if m else 0
+            return sorted(list(links), key=extract_num)
+
+        # Fallback normal via Playwright (pode estar faltando capítulos pagos)
+        try:
+            html = self._get_page_content_with_playwright(series_url, wait_selector='.wp-manga-chapter, .manga-info, .reading-content, #manga-chapters-holder, .c-page')
+        except Exception as e:
+            raise Exception(f"Failed to fetch Utoon series: {e}")
+                
+        # Fallback para extração por HTML caso algo falhe ou mude
+        parts = [p for p in series_url.split('/') if p]
+        slug = parts[-1] if parts else ""
+        soup = BeautifulSoup(html, 'html.parser')
         for a in soup.find_all('a', href=True):
             href = a['href']
             if f"utoon.net/manga/{slug}/chapter-" in href:
@@ -185,7 +212,58 @@ class UtoonScraper(BaseScraper):
                 seen.add(img)
                 ordered.append(img)
                 
+        # Só aceita no regex se for imagem de dados de mangá, para evitar pegar thumbnails do site e falsamente abortar a força bruta
         if not ordered:
-            ordered = list(dict.fromkeys(re.findall(r'(https://utoon\.net/wp-content/uploads/[^\s\'\"]+)', html)))
+            all_urls = re.findall(r'(https://utoon\.net/wp-content/uploads/[^\s\'\"]+)', html)
+            ordered = list(dict.fromkeys([u for u in all_urls if 'WP-manga/data/' in u]))
             
+        # USER REQUEST: Força bruta para baixar as imagens de capítulos pagos
+        if not ordered:
+            print(f"[UtoonScraper] Nenhuma imagem encontrada no HTML. O capítulo pode ser pago. Tentando descobrir os links (Força Bruta)...")
+            parts = [p for p in chapter_url.split('/') if p]
+            if len(parts) >= 2:
+                slug = parts[-2]
+                chap_slug = parts[-1]
+                # Exemplo: https://utoon.net/wp-content/uploads/WP-manga/data/the-mansion-awaits-spring/chapter-20/
+                base_img_url = f"https://utoon.net/wp-content/uploads/WP-manga/data/{slug}/{chap_slug}/"
+                
+                import urllib.request
+                valid_pad = None
+                valid_ext = None
+                
+                # Testamos a primeira imagem para descobrir o padrão correto
+                for pad in ["%02d", "%03d", "%d"]:
+                    for ext in [".jpg", ".webp", ".png", ".jpeg"]:
+                        img_url = base_img_url + (pad % 1) + ext
+                        try:
+                            req = urllib.request.Request(img_url, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'})
+                            req.get_method = lambda: 'HEAD' # Fazemos apenas um HEAD para ser rápido
+                            res = urllib.request.urlopen(req, timeout=5)
+                            if res.status == 200:
+                                valid_pad = pad
+                                valid_ext = ext
+                                break
+                        except Exception:
+                            pass
+                    if valid_pad:
+                        break
+                
+                if valid_pad and valid_ext:
+                    print(f"[UtoonScraper] Padrão encontrado: {valid_pad}{valid_ext}")
+                    # Agora pegamos até falhar ou bater o limite de 50 pedido pelo usuário
+                    for i in range(1, 51):
+                        img_url = base_img_url + (valid_pad % i) + valid_ext
+                        try:
+                            req = urllib.request.Request(img_url, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'})
+                            req.get_method = lambda: 'HEAD'
+                            res = urllib.request.urlopen(req, timeout=5)
+                            if res.status == 200:
+                                ordered.append(img_url)
+                            else:
+                                break # Parou de achar
+                        except Exception:
+                            break # Parou de achar
+                else:
+                    print(f"[UtoonScraper] Falha ao descobrir links ocultos para {chapter_url}")
+
         return ordered
