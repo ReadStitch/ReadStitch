@@ -35,6 +35,7 @@ from .pt_br.tiraninha_scraper import TiraninhaScraper
 from .pt_br.onereader_scraper import OneReaderScraper
 from .pt_br.manhastro_scraper import ManhastroScraper
 from .pt_br.safirescan_scraper import SafireScanScraper
+from .pt_br.mangalivre_blog_scraper import MangaLivreBlogScraper
 
 def get_scraper_for_url(url):
     url_lower = url.lower()
@@ -114,6 +115,8 @@ def get_scraper_for_url(url):
         return ResetScansScraper()
     elif 'blackoutcomics.com' in url_lower or 'blackoutcomics' in url_lower:
         return BlackoutComicsScraper()
+    elif 'mangalivre.blog' in url_lower or 'mangalivre' in url_lower:
+        return MangaLivreBlogScraper()
     elif 'elftoon.com' in url_lower or 'elftoon' in url_lower:
         from .en.elftoon_scraper import ElftoonScraper
         return ElftoonScraper()

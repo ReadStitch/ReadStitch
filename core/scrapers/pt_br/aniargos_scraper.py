@@ -67,8 +67,9 @@ class AniArgosScraper(BaseScraper):
             logger.error(f"[{self.name}] Erro no login automatizado: {e}")
             raise Exception(f"Erro ao fazer login no AniArgos: {e}")
 
-    def _get_page_content_with_playwright(self, url: str) -> str:
+    def _get_page_content_with_playwright(self, url: str, return_images=False):
         from playwright.sync_api import sync_playwright
+        intercepted_images = []
         with sync_playwright() as p:
             browser = p.chromium.launch(headless=True)
             context = browser.new_context()
@@ -86,8 +87,65 @@ class AniArgosScraper(BaseScraper):
                 context.add_cookies(cookies)
             
             page = context.new_page()
-            page.goto(url)
-            page.wait_for_timeout(2000) # Espera carregar o React
+            
+            if return_images:
+                def handle_request(request):
+                    req_url = request.url
+                    if ('supabase' in req_url or 'cdn.aniargos' in req_url) and 'logo' not in req_url.lower():
+                        if req_url not in intercepted_images:
+                            intercepted_images.append(req_url)
+                page.on("request", handle_request)
+                
+            page.goto(url, wait_until="networkidle")
+            
+            if return_images:
+                # Scroll robusto universal para lazy-load infinito (inclui containers de layout)
+                try:
+                    scroll_script = """
+                    (async () => {
+                        const getAllScrollables = () => {
+                            const scrollables = [window];
+                            const all = document.querySelectorAll('*');
+                            for (let el of all) {
+                                const style = window.getComputedStyle(el);
+                                if (style.overflowY === 'auto' || style.overflowY === 'scroll') {
+                                    scrollables.push(el);
+                                }
+                            }
+                            return scrollables;
+                        };
+                        
+                        let noChangeCount = 0;
+                        while(noChangeCount < 5) {
+                            let changed = false;
+                            const scrollables = getAllScrollables();
+                            for (let el of scrollables) {
+                                let prev;
+                                if (el === window) {
+                                    prev = window.scrollY;
+                                    window.scrollBy(0, 800);
+                                    if (window.scrollY > prev) changed = true;
+                                } else {
+                                    prev = el.scrollTop;
+                                    el.scrollBy(0, 800);
+                                    if (el.scrollTop > prev) changed = true;
+                                }
+                            }
+                            if (changed) {
+                                noChangeCount = 0;
+                            } else {
+                                noChangeCount++;
+                            }
+                            await new Promise(r => setTimeout(r, 200));
+                        }
+                    })()
+                    """
+                    page.evaluate(scroll_script)
+                    page.wait_for_timeout(1000)
+                except:
+                    pass
+            else:
+                page.wait_for_timeout(1000) # Espera carregar o React
             
             # Tenta clicar na aba "Capítulos" se existir, para forçar renderização
             try:
@@ -98,6 +156,8 @@ class AniArgosScraper(BaseScraper):
                 
             html = page.content()
             browser.close()
+            if return_images:
+                return html, intercepted_images
             return html
 
     def get_chapters(self, series_url):
@@ -121,9 +181,12 @@ class AniArgosScraper(BaseScraper):
         try:
             html = self._get_page_content_with_playwright(series_url)
             
-            chapters_paths = re.findall(r'href=["\'](/[^"\'/]+/[^"\'/]+/capitulo/[0-9.]+)["\']', html)
+            # Busca as rotas de capítulos em qualquer lugar do HTML (inclusive payloads JSON do NextJS)
+            chapters_paths = re.findall(r'(/[a-zA-Z0-9_\-]+/[a-zA-Z0-9_\-]+/capitulo/[0-9.]+)', html)
             if not chapters_paths:
-                chapters_paths = re.findall(r'href=["\'](/work/[^"\'/]+/capitulo/[0-9.]+)["\']', html)
+                chapters_paths = re.findall(r'href=["\'](/[^"\'/]+/[^"\'/]+/capitulo/[0-9.]+)["\']', html)
+            if not chapters_paths:
+                chapters_paths = re.findall(r'(/work/[a-zA-Z0-9_\-]+/capitulo/[0-9.]+)', html)
             if not chapters_paths:
                 chapters_paths = re.findall(r'href=["\'](/[^"\']+capitulo/[0-9.]+)["\']', html)
             
@@ -187,26 +250,25 @@ class AniArgosScraper(BaseScraper):
                 raise Exception(f"Erro de login: {e}")
                 
         try:
-            html = self._get_page_content_with_playwright(chapter_url)
+            html, intercepted_images = self._get_page_content_with_playwright(chapter_url, return_images=True)
             
-            # Tenta pegar das imagens renderizadas no DOM
-            from bs4 import BeautifulSoup
-            soup = BeautifulSoup(html, 'html.parser')
-            images = []
+            images = intercepted_images
             
-            # Na AniArgos as imagens do capítulo costumam estar em divs com next/image
-            # Ou dentro de <img alt="Página X">
-            for img in soup.find_all('img'):
-                src = img.get('src') or img.get('srcset')
-                if src and ('supabase' in src or 'cdn' in src or '_next/image' in src) and 'logo' not in src.lower():
-                    if src.startswith('/_next/image?url='):
-                        # decode url
-                        import urllib.parse
-                        actual_src = urllib.parse.unquote(src.split('url=')[1].split('&')[0])
-                        images.append(actual_src)
-                    else:
-                        images.append(src if src.startswith('http') else f"https:{src}" if src.startswith('//') else f"{self.base_url}{src}")
-                        
+            # Tenta pegar das imagens renderizadas no DOM se a interceptação falhou
+            if not images:
+                from bs4 import BeautifulSoup
+                soup = BeautifulSoup(html, 'html.parser')
+                
+                for img in soup.find_all('img'):
+                    src = img.get('src') or img.get('srcset')
+                    if src and ('supabase' in src or 'cdn' in src or '_next/image' in src) and 'logo' not in src.lower():
+                        if src.startswith('/_next/image?url='):
+                            import urllib.parse
+                            actual_src = urllib.parse.unquote(src.split('url=')[1].split('&')[0])
+                            images.append(actual_src)
+                        else:
+                            images.append(src if src.startswith('http') else f"https:{src}" if src.startswith('//') else f"{self.base_url}{src}")
+                            
             if not images:
                 # Tenta regex no NextJS Data
                 m = re.search(r'\\"pages\\":(\[.*?\])', html)
@@ -225,6 +287,10 @@ class AniArgosScraper(BaseScraper):
             seen = set()
             unique_images = []
             for img in images:
+                # Filtrar _next/image final URL
+                if '/_next/image?url=' in img:
+                    import urllib.parse
+                    img = urllib.parse.unquote(img.split('url=')[1].split('&')[0])
                 if img not in seen:
                     seen.add(img)
                     unique_images.append(img)

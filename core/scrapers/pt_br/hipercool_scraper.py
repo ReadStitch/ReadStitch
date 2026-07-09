@@ -77,21 +77,76 @@ class HipercoolScraper(BaseScraper):
             browser = p.chromium.launch(headless=True)
             page = browser.new_page()
             
+            intercepted_images = []
+            def handle_request(request):
+                if request.resource_type in ["image", "fetch"]:
+                    src = request.url.lower()
+                    if ('capitulo' in src or 'upload' in src or 'media' in src or 'manga' in src) and 'logo' not in src and 'avatar' not in src:
+                        # ignorar urls muito pequenas ou não relacionadas a paginas
+                        if request.url not in intercepted_images:
+                            intercepted_images.append(request.url)
+            page.on("request", handle_request)
+            
             try:
                 page.goto(chapter_url, wait_until="networkidle", timeout=30000)
-                page.wait_for_timeout(3000)
+                
+                # Scroll robusto universal para lazy-load
+                scroll_script = """
+                (async () => {
+                    const getAllScrollables = () => {
+                        const scrollables = [window];
+                        const all = document.querySelectorAll('*');
+                        for (let el of all) {
+                            const style = window.getComputedStyle(el);
+                            if (style.overflowY === 'auto' || style.overflowY === 'scroll') {
+                                scrollables.push(el);
+                            }
+                        }
+                        return scrollables;
+                    };
+                    
+                    let noChangeCount = 0;
+                    while(noChangeCount < 5) {
+                        let changed = false;
+                        const scrollables = getAllScrollables();
+                        for (let el of scrollables) {
+                            let prev;
+                            if (el === window) {
+                                prev = window.scrollY;
+                                window.scrollBy(0, 800);
+                                if (window.scrollY > prev) changed = true;
+                            } else {
+                                prev = el.scrollTop;
+                                el.scrollBy(0, 800);
+                                if (el.scrollTop > prev) changed = true;
+                            }
+                        }
+                        if (changed) {
+                            noChangeCount = 0;
+                        } else {
+                            noChangeCount++;
+                        }
+                        await new Promise(r => setTimeout(r, 200));
+                    }
+                })()
+                """
+                page.evaluate(scroll_script)
+                page.wait_for_timeout(1000)
             except Exception as e:
                 logger.error(f"[{self.name}] Erro ao carregar página do capítulo: {e}")
                 
-            img_elements = page.query_selector_all("img")
-            for img in img_elements:
-                src = img.get_attribute("src")
-                # Foca em links que hospedem imagens dos mangas (CDN externa na maioria das vezes)
-                if src and ('capitulo' in src.lower() or 'upload' in src.lower() or 'media' in src.lower() or 'manga' in src.lower()):
-                    if src.startswith('http'):
-                        if src not in images:
-                            images.append(src)
-                            
+            images = intercepted_images
+            
+            if not images:
+                # Fallback para o DOM
+                img_elements = page.query_selector_all("img")
+                for img in img_elements:
+                    src = img.get_attribute("src") or img.get_attribute("data-src")
+                    if src and ('capitulo' in src.lower() or 'upload' in src.lower() or 'media' in src.lower() or 'manga' in src.lower()):
+                        if src.startswith('http'):
+                            if src not in images:
+                                images.append(src)
+                                
             browser.close()
             
         if not images:
