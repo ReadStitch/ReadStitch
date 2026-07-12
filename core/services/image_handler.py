@@ -59,8 +59,12 @@ def _load_image_worker(args: tuple) -> tuple[bool, str, bytes | None, str | None
             psd = PSDImage.open(img_path)
             if psd_first_layer_only and len(psd) > 0:
                 image = psd[0].topil()
+                if image is None and hasattr(psd[0], 'composite'):
+                    image = psd[0].composite()
             else:
                 image = psd.topil()
+                if image is None:
+                    image = psd.composite()
 
         if image is None:
             raise ValueError(f"Unable to decode image: {img_path}")
@@ -139,15 +143,13 @@ class ImageHandler:
         workdirectory: WorkDirectory,
         psd_first_layer_only: bool = False,
     ) -> list[pil.Image]:
-        """Load all images in *workdirectory* using threads (safer than processes).
+        """Load all images in *workdirectory* using processes for true parallelism.
 
-        Uses ThreadPoolExecutor instead of ProcessPoolExecutor to avoid:
-        - Excessive memory usage from serialization
-        - Process spawning overhead
-        - System instability from too many processes
-
+        Uses ProcessPoolExecutor because PSD compositing is highly CPU-bound
+        and blocks the GIL if run in ThreadPoolExecutor.
         Raises RuntimeError if any file is invalid/corrupted.
         """
+        from concurrent.futures import ProcessPoolExecutor, as_completed
         img_paths = [
             os.path.join(workdirectory.input_path, f)
             for f in workdirectory.input_files
@@ -156,43 +158,27 @@ class ImageHandler:
         images: list[pil.Image | None] = [None] * len(img_paths)
         errors: list[str] = []
 
-        def _load_single(idx: int, path: str) -> None:
-            """Load a single image in thread."""
-            ext = os.path.splitext(path)[1].lower()
-            try:
-                if ext not in PHOTOSHOP_FILE_TYPES:
-                    image = pil.open(path)
-                    image.load()  # Force load into memory
-                else:
-                    psd = PSDImage.open(path)
-                    if psd_first_layer_only and len(psd) > 0:
-                        image = psd[0].topil()
-                    else:
-                        image = psd.topil()
+        # Create args for the worker
+        worker_args = [(path, psd_first_layer_only) for path in img_paths]
+        
+        path_to_idx = {path: i for i, path in enumerate(img_paths)}
 
-                if image is None:
-                    raise ValueError(f"Unable to decode image: {path}")
-
-                if image.mode not in ("RGB", "RGBA"):
-                    image = image.convert("RGB")
-
-                images[idx] = image
-            except (UnidentifiedImageError, OSError, ValueError) as exc:
-                errors.append(f"{path}: {exc}")
-            except Exception as exc:
-                errors.append(f"{path}: {repr(exc)}")
-
-        # Use threads instead of processes - safer and sufficient for I/O
-        with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
+        with ProcessPoolExecutor(max_workers=self.max_workers) as executor:
             futures = [
-                executor.submit(_load_single, i, p)
-                for i, p in enumerate(img_paths)
+                executor.submit(_load_image_worker, arg)
+                for arg in worker_args
             ]
             for fut in as_completed(futures):
                 try:
-                    fut.result(timeout=_DEFAULT_TIMEOUT_SECONDS)
+                    ok, path, img_bytes, err = fut.result()
+                    if ok and img_bytes is not None:
+                        idx = path_to_idx[path]
+                        images[idx] = pil.open(io.BytesIO(img_bytes))
+                        images[idx].load()
+                    else:
+                        errors.append(f"{path}: {err}")
                 except Exception as exc:
-                    errors.append(f"Load timeout or error: {exc}")
+                    errors.append(f"Worker crashed: {exc}")
 
         if errors:
             # Close any successfully loaded images before raising
