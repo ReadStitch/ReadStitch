@@ -1,2 +1,2 @@
 # build_version.py
-APP_BUILD_VERSION = "1.5.4"
+APP_BUILD_VERSION = "1.5.5"

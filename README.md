@@ -67,21 +67,28 @@ Baixe capítulos diretamente dos principais sites de leitura:
 |---|---|
 | [Verdinha](https://reaperscans.com.br) | ✅ *(login)* |
 | [Mediocretoons](https://mediocrescan.com) | ✅ *(login)* |
-| Capitoons | ✅ |
-| Pluma Comics | ✅ |
-| Geass Comics | ✅ |
-| Lycan Toons | ✅ |
-| Inkapk | ✅ |
-| Nexus | ✅ |
-| Hipercool | ✅ |
-| Vegitoons | ✅ |
-| Astratoons | ✅ |
-| Safire Scan | ✅ |
-| Empreguetes | ✅ |
-| Manhastro | ✅ |
-| Tiraninha | ✅ |
-| OneReader | ✅ |
-| Blackout Comics | ✅ |
+| [Capitoons](https://capitoons.com) | ✅ |
+| [Pluma Comics](https://plumacomics.com) | ✅ |
+| [Geass Comics](https://geasscomics.com) | ✅ |
+| [Lycan Toons](https://lycantoons.com) | ✅ |
+| [Inkapk](https://inkapk.com) | ✅ |
+| [Nexus (Nx-Toons)](https://nx-toons.com) | ✅ |
+| [Hipercool / LerHentais](https://hiper.cool) | ✅ |
+| [Vegitoons](https://vegitoons.com) | ✅ |
+| [Astratoons](https://astratoons.com) | ✅ |
+| [Safire Scan](https://safirescan.site) | ✅ |
+| [Empreguetes](https://empreguetes.wtf) | ✅ |
+| [Manhastro](https://manhastro.net) | ✅ |
+| [Tiraninha](https://tiraninha.world) | ✅ |
+| [OneReader](https://onereader.net) | ✅ |
+| [Blackout Comics](https://blackoutcomics.com) | ✅ |
+| [Erosect](https://erosect.xyz) | ✅ |
+| [AniArgos](https://aniargos.com) | ✅ |
+| [TiaManhwa](https://tiamanhwa.com) | ✅ |
+| [MangaLivre.blog](https://mangalivre.blog) | ✅ |
+| [Fenix Project](https://fenixproject.site) | ✅ |
+| [Acervo Eremita](https://acervoeremita.com) | ✅ |
+| [Império da Britannia](https://imperiodabritannia.net) | ✅ |
 
 </td>
 </tr>
@@ -103,6 +110,7 @@ Baixe capítulos diretamente dos principais sites de leitura:
 | Site | Suporte |
 |---|---|
 | [Piccoma](https://piccoma.com) | ✅ *(login)* |
+| [Comic-Walker (Kadocomi)](https://comic-walker.com) | ✅ |
 
 </td>
 </tr>

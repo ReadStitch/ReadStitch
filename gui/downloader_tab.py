@@ -71,6 +71,13 @@ class DownloadThread(QThread):
             else:
                 base_path = os.path.join(self.output_dir, self.series_name)
             
+            def clean_num(n_str):
+                try:
+                    f = float(n_str)
+                    return str(int(f)) if f.is_integer() else str(f)
+                except ValueError:
+                    return n_str
+
             last_chap_name = ""
             for i, chap_url in enumerate(self.chapters):
                 import re
@@ -83,19 +90,19 @@ class DownloadThread(QThread):
                 parsed = urlparse.urlparse(clean_url)
                 qs = urlparse.parse_qs(parsed.query)
                 if 'chapter' in qs:
-                    raw_chap_name = f"Capitulo {qs['chapter'][0]}"
+                    raw_chap_name = f"Capitulo {clean_num(qs['chapter'][0])}"
                 elif 'cap' in qs:
-                    raw_chap_name = f"Capitulo {qs['cap'][0]}"
+                    raw_chap_name = f"Capitulo {clean_num(qs['cap'][0])}"
                 else:
                     # Tentar extrair o número do capítulo usando a url limpa
                     match = re.search(r'(?:chapter|capitulo|cap|ch|episode|ep)(?:_no)?(?:[-_=/\s]*)(\d+(?:\.\d+)?)', clean_url, re.IGNORECASE)
                     if match:
-                        raw_chap_name = f"Capitulo {match.group(1)}"
+                        raw_chap_name = f"Capitulo {clean_num(match.group(1))}"
                     else:
                         basename = clean_url.split('?')[0].split('/')[-1]
                         match = re.search(r'^(\d+(?:\.\d+)?)$', basename)
                         if match:
-                            raw_chap_name = f"Capitulo {match.group(1)}"
+                            raw_chap_name = f"Capitulo {clean_num(match.group(1))}"
                         else:
                             chap_parts = [p for p in clean_url.split('/') if p]
                             raw_chap_name = chap_parts[-1] if chap_parts else f"Capitulo_{i+1}"
@@ -443,6 +450,13 @@ class DownloaderController(QObject):
             import urllib.parse as urlparse
             url_str = str(url).rstrip('/')
             
+            def clean_num(n_str):
+                try:
+                    f = float(n_str)
+                    return str(int(f)) if f.is_integer() else str(f)
+                except ValueError:
+                    return n_str
+            
             # Remove fragmentos
             clean_url = url_str.split('#')[0]
             
@@ -450,21 +464,21 @@ class DownloaderController(QObject):
             parsed = urlparse.urlparse(clean_url)
             qs = urlparse.parse_qs(parsed.query)
             if 'chapter' in qs:
-                return f"Capítulo {qs['chapter'][0]}"
+                return f"Capítulo {clean_num(qs['chapter'][0])}"
             if 'cap' in qs:
-                return f"Capítulo {qs['cap'][0]}"
+                return f"Capítulo {clean_num(qs['cap'][0])}"
             
             # Tentar extrair o número do capítulo a partir de formatações na URL inteira (incluindo query)
             match = re.search(r'(?:chapter|capitulo|cap|ch|episode|ep)(?:_no)?(?:[-_=/\s]*)(\d+(?:\.\d+)?)', clean_url, re.IGNORECASE)
             if match:
-                return f"Capítulo {match.group(1)}"
+                return f"Capítulo {clean_num(match.group(1))}"
                 
             basename = clean_url.split('?')[0].split('/')[-1]
                 
             # Se a string inteira for só um número
             match = re.search(r'^(\d+(?:\.\d+)?)$', basename)
             if match:
-                return f"Capítulo {match.group(1)}"
+                return f"Capítulo {clean_num(match.group(1))}"
                 
             # Fallback
             return basename.capitalize()

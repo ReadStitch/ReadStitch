@@ -17,6 +17,7 @@ from .kr.kakao_scraper import KakaoScraper
 from .kr.naver_scraper import NaverScraper
 
 from .jp.piccoma_scraper import PiccomaScraper
+from .jp.comicwalker_scraper import ComicWalkerScraper
 
 from .pt_br.apecomics_scraper import ApeComicsScraper
 from .pt_br.plumacomics_scraper import PlumaComicsScraper
@@ -36,6 +37,9 @@ from .pt_br.onereader_scraper import OneReaderScraper
 from .pt_br.manhastro_scraper import ManhastroScraper
 from .pt_br.safirescan_scraper import SafireScanScraper
 from .pt_br.mangalivre_blog_scraper import MangaLivreBlogScraper
+from .pt_br.fenixproject_scraper import FenixProjectScraper
+from .pt_br.acervoeremita_scraper import AcervoEremitaScraper
+from .pt_br.imperiodabritannia_scraper import ImperioDaBritanniaScraper
 
 def get_scraper_for_url(url):
     url_lower = url.lower()
@@ -51,12 +55,14 @@ def get_scraper_for_url(url):
         return UtoonScraper()
     elif 'qimanhwa.com' in url_lower or 'qimanga.com' in url_lower:
         return QiScraper()
-    elif 'vortexscans.org' in url_lower or 'hivetoons.org' in url_lower:
+    elif any(d in url_lower for d in ('vortexscans.org', 'vortexscans.com', 'hivetoons.org', 'hivetoons.com')):
         return VortexScraper()
     elif 'comix.to' in url_lower or 'comick' in url_lower:
         return ComixScraper()
     elif 'piccoma.com' in url_lower:
         return PiccomaScraper()
+    elif 'comic-walker.com' in url_lower or 'kadocomi' in url_lower:
+        return ComicWalkerScraper()
     elif 'capitoons.com' in url_lower or 'apecomics' in url_lower:
         return ApeComicsScraper()
     elif 'plumacomics' in url_lower:
@@ -69,16 +75,26 @@ def get_scraper_for_url(url):
         return InkapkScraper()
     elif 'tapas.io' in url_lower:
         return TapasScraper()
-    elif 'roliascan' in url_lower:
-        return RoliascanScraper()
-    elif 'mangadex.org' in url_lower or 'mangadex' in url_lower:
-        return MangadexScraper()
+    elif 'safirescan.site' in url_lower:
+        return SafireScanScraper()
+    elif 'mangalivre.net' in url_lower or 'mangalivre.com' in url_lower:
+        return MangaLivreBlogScraper()
+    elif 'fenixproject.site' in url_lower:
+        return FenixProjectScraper()
+    elif 'acervoeremita.com' in url_lower:
+        return AcervoEremitaScraper()
+    elif 'imperiodabritannia.net' in url_lower or 'imperiodabritannia' in url_lower:
+        return ImperioDaBritanniaScraper()
     elif 'astratoons.com' in url_lower or 'astratoons' in url_lower:
         return AstratoonsScraper()
     elif 'genztoons.org' in url_lower:
         return GenzScraper()
     elif 'comic.naver.com' in url_lower:
         return NaverScraper()
+    elif 'roliascan' in url_lower:
+        return RoliascanScraper()
+    elif 'mangadex.org' in url_lower or 'mangadex' in url_lower:
+        return MangadexScraper()
     elif 'nx-toons' in url_lower or 'nexus' in url_lower:
         return NexusScraper()
     elif 'vegitoons' in url_lower:
