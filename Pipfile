@@ -17,6 +17,7 @@ numpy = "*"
 pyside6 = "*"
 pyqtdarktheme = "*"
 psd-tools = "*"
+requests = "*"
 
 [dev-packages]
 flake8 = "*"

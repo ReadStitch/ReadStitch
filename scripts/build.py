@@ -79,6 +79,7 @@ def main() -> None:
         "natsort",
         "backports.tarfile",
         "pillow_avif",
+        "requests",
     ]
 
     args: list[str] = [

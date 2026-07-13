@@ -11,3 +11,4 @@ playwright
 playwright-stealth
 image-scramble
 pillow-avif-plugin
+requests
