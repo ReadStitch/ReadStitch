@@ -40,6 +40,7 @@ from .pt_br.mangalivre_blog_scraper import MangaLivreBlogScraper
 from .pt_br.fenixproject_scraper import FenixProjectScraper
 from .pt_br.acervoeremita_scraper import AcervoEremitaScraper
 from .pt_br.imperiodabritannia_scraper import ImperioDaBritanniaScraper
+from .pt_br.nyxscans_scraper import NyxScansScraper
 
 def get_scraper_for_url(url):
     url_lower = url.lower()
@@ -142,5 +143,7 @@ def get_scraper_for_url(url):
     elif 'aniargos.com' in url_lower or 'aniargos' in url_lower:
         from .pt_br.aniargos_scraper import AniArgosScraper
         return AniArgosScraper()
+    elif 'nyxscans.com' in url_lower or 'nyxscans' in url_lower:
+        return NyxScansScraper()
     # Default to Asura
     return AsuraScraper()

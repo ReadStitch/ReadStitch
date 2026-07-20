@@ -1,22 +1,42 @@
 import logging
 import urllib.request
+import urllib.error
 import json
 import re
 from ..base_scraper import BaseScraper
+from core.cloudflare_bypass import get_cookie_header
 
 logger = logging.getLogger(__name__)
 
 class LycanToonsScraper(BaseScraper):
     """Scraper para o site LycanToons."""
     
+    def __init__(self):
+        super().__init__()
+        self._load_cookies()
+
+    def _load_cookies(self):
+        cookie_header = get_cookie_header("lycantoons.com")
+        if cookie_header:
+            self.headers['Cookie'] = cookie_header
+
     @property
     def name(self):
         return "Lycan Toons"
 
     def _fetch_api(self, url):
         req = urllib.request.Request(url, headers=self.headers)
-        with urllib.request.urlopen(req) as response:
-            return response.read().decode('utf-8', errors='ignore')
+        try:
+            with urllib.request.urlopen(req) as response:
+                return response.read().decode('utf-8', errors='ignore')
+        except urllib.error.HTTPError as e:
+            if e.code in (403, 503):
+                raise Exception("Acesso bloqueado (Cloudflare). Clique no botão '🛡 Resolver Proteção Cloudflare', aguarde a verificação e tente novamente.")
+            raise e
+        except Exception as e:
+            if '403' in str(e) or '503' in str(e):
+                raise Exception("Acesso bloqueado (Cloudflare). Clique no botão '🛡 Resolver Proteção Cloudflare', aguarde a verificação e tente novamente.")
+            raise e
 
     def get_chapters(self, series_url):
         logger.info(f"[{self.name}] Fetching chapters from: {series_url}")
@@ -29,6 +49,8 @@ class LycanToonsScraper(BaseScraper):
             resp = self._fetch_api(api_url)
             data = json.loads(resp)
         except Exception as e:
+            if "Cloudflare" in str(e):
+                raise e
             logger.error(f"[{self.name}] Erro ao buscar dados da série: {e}")
             raise Exception("Não foi possível acessar a API do Lycan Toons")
             
@@ -78,6 +100,8 @@ class LycanToonsScraper(BaseScraper):
         try:
             html = self._fetch_api(clean_url)
         except Exception as e:
+            if "Cloudflare" in str(e):
+                raise e
             logger.error(f"[{self.name}] Erro ao buscar página do capítulo: {e}")
             raise Exception("Falha ao obter página do capítulo")
             
