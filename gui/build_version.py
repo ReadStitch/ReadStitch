@@ -1,2 +1,2 @@
-# build_version.py
-APP_BUILD_VERSION = "1.5.6"
+# Este arquivo será sobrescrito pelo GitHub Actions
+APP_BUILD_VERSION = "1.5.7"

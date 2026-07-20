@@ -1,85 +1,138 @@
 import urllib.request
+import urllib.parse
 import re
+import json
+import base64
+import os
+import io
 from ..base_scraper import BaseScraper
+
+try:
+    from PIL import Image
+    HAS_PILLOW = True
+except ImportError:
+    HAS_PILLOW = False
 
 class AsuraScraper(BaseScraper):
     def __init__(self):
         super().__init__()
-        self.base_url = "https://asurascans.com"
+        self.base_url = "https://asuracomic.net"
+        self.api_url = "https://api.asurascans.com/api"
         self.credentials = None
-        self._logged_in = False
+        self._access_token = None
 
-    def _fetch_html(self, url):
-        req = urllib.request.Request(url, headers=self.headers)
-        with urllib.request.urlopen(req) as response:
-            return response.read().decode('utf-8')
+    def _get_access_token(self):
+        if self._access_token:
+            return self._access_token
 
-    def _fetch_chapter_with_playwright(self, chapter_url, email, password):
-        print(f"[AsuraScraper] Iniciando Playwright para o capítulo: {chapter_url}")
+        # Tenta carregar do cache
+        cache_file = os.path.join(os.path.expanduser("~"), ".asura_token_cache")
+        if os.path.exists(cache_file):
+            try:
+                with open(cache_file, "r") as f:
+                    self._access_token = f.read().strip()
+                if self._access_token:
+                    return self._access_token
+            except:
+                pass
+
+        if not self.credentials:
+            return None
+
+        email, password = self.credentials
+        if not email or not password:
+            return None
+
+        print("[AsuraScraper] Não há token salvo. Fazendo login na API Asura (sem abrir navegador)...")
         try:
-            from playwright.sync_api import sync_playwright
-            with sync_playwright() as p:
-                browser = p.chromium.launch(headless=False)
-                # Janela pequena para não incomodar muito
-                page = browser.new_page(viewport={'width': 800, 'height': 600})
+            login_url = "https://api.asurascans.com/api/auth/login"
+            payload = json.dumps({"email": email, "password": password}).encode('utf-8')
+            req = urllib.request.Request(
+                login_url, 
+                data=payload, 
+                headers={
+                    "Content-Type": "application/json",
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+                }
+            )
+            
+            with urllib.request.urlopen(req) as response:
+                response_data = response.read().decode('utf-8')
+                cookies = response.headers.get_all('Set-Cookie')
                 
-                # 1. Ir direto para o capítulo
-                page.goto(chapter_url, wait_until="networkidle")
+                # Procurar o token nos cookies
+                if cookies:
+                    for cookie in cookies:
+                        if 'access_token=' in cookie:
+                            # O cookie vem no formato "access_token=VALOR; Path=..."
+                            match = re.search(r'access_token=([^;]+)', cookie)
+                            if match:
+                                self._access_token = match.group(1)
+                                break
                 
-                # 2. Tentar preencher o login que aparece no próprio capítulo
-                try:
-                    # Se não aparecer em 10 segundos, talvez já esteja logado ou não seja esse o bloqueio
-                    page.wait_for_selector('input[type="email"]', timeout=10000)
-                    print("[AsuraScraper] Formulário de login encontrado no capítulo. Autenticando...")
-                    page.fill('input[type="email"]', email)
-                    page.fill('input[type="password"]', password)
-                    page.click('button[type="submit"]')
+                # Se não achou no cookie, procurar no JSON de resposta
+                if not self._access_token:
+                    try:
+                        json_resp = json.loads(response_data)
+                        if 'data' in json_resp and 'access_token' in json_resp['data']:
+                            self._access_token = json_resp['data']['access_token']
+                    except:
+                        pass
+                
+                if self._access_token:
+                    print("[AsuraScraper] Token capturado com sucesso via API!")
+                    with open(cache_file, "w") as f:
+                        f.write(self._access_token)
+                    return self._access_token
+                else:
+                    print("[AsuraScraper] Login bem sucedido, mas não foi possível encontrar o token na resposta.")
                     
-                    # Esperar o reload ou o carregamento das imagens após logar
-                    page.wait_for_timeout(5000)
-                except Exception as e:
-                    print("[AsuraScraper] Não achou formulário ou timeout. Buscando imagens direto...")
-                
-                # 3. Extrair as imagens direto do DOM carregado
-                print("[AsuraScraper] Extraindo imagens renderizadas...")
-                imgs = page.locator("img").all()
-                
-                seen = set()
-                ordered = []
-                for img in imgs:
-                    src = img.get_attribute("src")
-                    if src and "/asura-images/chapters/" in src:
-                        if src not in seen:
-                            seen.add(src)
-                            ordered.append(src)
-                
-                browser.close()
-                return ordered
         except Exception as e:
-            print(f"[AsuraScraper] Erro no fluxo do Playwright: {e}")
-            return []
+            try:
+                error_msg = e.read().decode('utf-8')
+                print(f"[AsuraScraper] Erro ao fazer login na API: {error_msg}")
+            except:
+                print(f"[AsuraScraper] Erro de conexão na API de login: {e}")
+
+        return None
 
     def get_chapters(self, series_url):
         """
         Fetches the series page and extracts a list of all chapter URLs.
         Returns a sorted list of absolute chapter URLs.
-        If a chapter URL is provided, returns just that chapter.
         """
         if "/chapter/" in series_url:
             return [series_url]
             
         try:
-            html = self._fetch_html(series_url)
+            req = urllib.request.Request(series_url, headers=self.headers)
+            with urllib.request.urlopen(req) as response:
+                final_url = response.geturl()
+                html = response.read().decode('utf-8')
         except Exception as e:
             raise Exception(f"Failed to fetch series page: {e}")
 
-        # Extract slug from URL
-        slug = [p for p in series_url.split('/') if p][-1]
+        # Extrair o slug limpo sem query params
+        path = urllib.parse.urlparse(final_url).path.strip('/')
+        parts = [p for p in path.split('/') if p]
         
-        # Regex to find /comics/slug/chapter/X
-        pattern = r'href=[\'\"](/comics/' + re.escape(slug) + r'/chapter/[^\'\"]+)[\'\"]'
+        if not parts:
+            print("[AsuraScraper] URL da série redirecionou para a home. Você pode estar sem acesso (Beta Fechado) ou o link não existe.")
+            return []
+            
+        slug = parts[-1]
+        
+        # Regex flexível para achar os links do capítulo no HTML renderizado SSR
+        pattern = r'href=[\'\"](/(?:comics|series)/' + re.escape(slug) + r'(?:-[a-fA-F0-9]+)?/chapter/[^\'\"]+)[\'\"]'
         links = set(re.findall(pattern, html))
         
+        # Se não encontrou links com o slug exato, tenta com o slug original
+        if not links:
+            original_slug = [p for p in urllib.parse.urlparse(series_url).path.strip('/').split('/') if p][-1]
+            clean_slug = re.sub(r'-[a-fA-F0-9]{8}$', '', original_slug)
+            pattern = r'href=[\'\"](/(?:comics|series)/' + re.escape(clean_slug) + r'(?:-[a-fA-F0-9]+)?/chapter/[^\'\"]+)[\'\"]'
+            links = set(re.findall(pattern, html))
+            
         def extract_num(path):
             match = re.search(r'chapter(?:-|\/)(\d+(?:\.\d+)?)', path)
             return float(match.group(1)) if match else 0
@@ -87,37 +140,98 @@ class AsuraScraper(BaseScraper):
         sorted_links = sorted(list(links), key=extract_num)
         return [self.base_url + l for l in sorted_links]
 
-    def _extract_images_from_html(self, html):
-        # Asura stores JSON props in HTML where quotes are HTML-escaped.
-        html = html.replace('&quot;', '"')
-        images = re.findall(r'https://cdn\.asurascans\.com/asura-images/chapters/[^\"\']+\.(?:webp|jpg|png)', html)
-        if not images:
-            # Maybe the domain is different now (e.g. asuracomic)
-            images = re.findall(r'https://.*?/asura-images/chapters/[^\"\']+\.(?:webp|jpg|png)', html)
+    def _unscramble_image(self, img_url, page_data):
+        if not HAS_PILLOW:
+            print("[AsuraScraper] Pillow não instalado! Imagem embaralhada não pôde ser reconstruída. Salvando original...")
+            return img_url
+
+        try:
+            # Baixa a imagem embaralhada em memória
+            req = urllib.request.Request(img_url, headers={"User-Agent": "Mozilla/5.0"})
+            with urllib.request.urlopen(req) as response:
+                img_data = response.read()
             
-        seen = set()
-        ordered = []
-        for img in images:
-            if img not in seen:
-                seen.add(img)
-                ordered.append(img)
-        return ordered
+            source = Image.open(io.BytesIO(img_data)).convert('RGBA')
+            tileCols = page_data.get('tileCols', 1)
+            tileRows = page_data.get('tileRows', 1)
+            tiles = page_data.get('tiles', [])
+            
+            if not tiles or tileCols <= 1 or tileRows <= 1:
+                return img_url # Não é embaralhada
+
+            tileW = source.width // tileCols
+            tileH = source.height // tileRows
+            
+            output = Image.new('RGBA', (source.width, source.height))
+            
+            for w, j in enumerate(tiles):
+                srcCol = w % tileCols
+                srcRow = w // tileCols
+                dstCol = j % tileCols
+                dstRow = j // tileCols
+                
+                srcBox = (srcCol * tileW, srcRow * tileH, (srcCol + 1) * tileW, (srcRow + 1) * tileH)
+                dstBox = (dstCol * tileW, dstRow * tileH, (dstCol + 1) * tileW, (dstRow + 1) * tileH)
+                
+                tile = source.crop(srcBox)
+                output.paste(tile, dstBox)
+                
+            # Salva o resultado em base64 usando Data URI
+            buffer = io.BytesIO()
+            output.save(buffer, format="WEBP", quality=100)
+            b64_str = base64.b64encode(buffer.getvalue()).decode('utf-8')
+            return f"data:image/webp;base64,{b64_str}"
+            
+        except Exception as e:
+            print(f"[AsuraScraper] Erro ao desembaralhar imagem {img_url}: {e}")
+            return img_url
 
     def get_chapter_images(self, chapter_url):
         """
-        Fetches the chapter page and extracts all image URLs.
+        Fetches the chapter page and extracts all image URLs using the API.
         """
-        try:
-            html = self._fetch_html(chapter_url)
-        except Exception as e:
-            raise Exception(f"Failed to fetch chapter page: {e}")
-            
-        images = self._extract_images_from_html(html)
+        # Extrair slug e número do capítulo da URL: https://asuracomic.net/comics/slug-f886a8af/chapter/97
+        path = urllib.parse.urlparse(chapter_url).path
+        match = re.search(r'/(?:comics|series)/([^/]+)/chapter/([^/]+)', path)
+        if not match:
+            print("[AsuraScraper] Formato de URL de capítulo não reconhecido.")
+            return []
         
-        # Se não vieram imagens e temos credenciais configuradas, usar Playwright para logar e ler o capítulo
-        if not images and self.credentials:
-            print("[AsuraScraper] Nenhuma imagem encontrada. Capítulo pode ser pago. Ativando Playwright...")
-            email, password = self.credentials
-            images = self._fetch_chapter_with_playwright(chapter_url, email, password)
+        slug = match.group(1)
+        chapter_number = match.group(2)
+
+        token = self._get_access_token()
+        
+        api_endpoint = f"{self.api_url}/series/{slug}/chapters/{chapter_number}"
+        
+        req = urllib.request.Request(api_endpoint, headers={"User-Agent": "Mozilla/5.0"})
+        if token:
+            req.add_header("Authorization", f"Bearer {token}")
+            req.add_header("Cookie", f"access_token={token}")
+
+        print(f"[AsuraScraper] Buscando imagens na API: {api_endpoint}")
+        try:
+            with urllib.request.urlopen(req) as response:
+                data = json.loads(response.read().decode('utf-8'))
+        except Exception as e:
+            print(f"[AsuraScraper] Falha ao acessar API ({e}). Talvez precise de credenciais Premium válidas e Login falhou.")
+            return []
+
+        if 'data' not in data or 'chapter' not in data['data'] or 'pages' not in data['data']['chapter']:
+            return []
+
+        pages = data['data']['chapter']['pages']
+        ordered = []
+        
+        for p in pages:
+            img_url = p.get('url')
+            if not img_url:
+                continue
                 
-        return images
+            if 'tiles' in p and p['tiles']:
+                print(f"[AsuraScraper] Imagem embaralhada detectada. Desembaralhando...")
+                ordered.append(self._unscramble_image(img_url, p))
+            else:
+                ordered.append(img_url)
+                
+        return ordered

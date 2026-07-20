@@ -111,10 +111,10 @@ class EmpreguetesScraper(BaseScraper):
             details_url = f"{self.api_url}/obras/{obra_id}"
             details_data = self._fetch_api(details_url)
             
-            chapters_data = details_data.get('capitulos', [])
+            chapters_data = details_data.get('capitulos') or details_data.get('chapters') or []
             
             if not chapters_data:
-                logger.warning(f"[{self.name}] Nenhum capÃ­tulo encontrado (tem certeza que tem acesso VIP ou o mangÃ¡ possui caps?)")
+                logger.warning(f"[{self.name}] Nenhum capítulo encontrado ou a estrutura mudou. Resposta parcial: {str(details_data)[:500]}")
                 return []
                 
             all_chapters = []
@@ -161,15 +161,30 @@ class EmpreguetesScraper(BaseScraper):
             api_chap_url = f"{self.api_url}/capitulos/{chapter_id}"
             chap_data = self._fetch_api(api_chap_url)
             
-            pages = chap_data.get('cap_paginas', [])
+            pages = chap_data.get('cap_paginas') or chap_data.get('paginas') or chap_data.get('pages') or chap_data.get('images') or []
             if not pages:
-                raise Exception("O capÃ­tulo nÃ£o possui imagens acessÃ­veis")
+                logger.error(f"[{self.name}] Estrutura de dados não reconhecida. Resposta: {str(chap_data)[:500]}")
+                raise Exception("O capítulo não possui imagens acessíveis ou a estrutura da API mudou")
                 
+            obra_dict = chap_data.get('obra', {})
+            scan_id = obra_dict.get('scan_id', 3)
+            obr_id = chap_data.get('obr_id')
+            cap_numero = chap_data.get('cap_numero')
+            
             images = []
             for p in pages:
-                img_path = p.get('path')
-                if img_path:
-                    images.append(f"{self.cdn_url}/{img_path.lstrip('/')}")
+                if isinstance(p, str):
+                    img_src = p
+                else:
+                    img_src = p.get('src') or p.get('path') or p.get('url') or p.get('imagem') or p.get('file')
+                    
+                if img_src:
+                    if img_src.startswith('http'):
+                        images.append(img_src)
+                    elif '/' in img_src:
+                        images.append(f"{self.cdn_url}/{img_src.lstrip('/')}")
+                    else:
+                        images.append(f"https://cdn.verdinha.wtf/scans/{scan_id}/obras/{obr_id}/capitulos/{cap_numero}/{img_src}")
                     
             logger.info(f"[{self.name}] Encontradas {len(images)} imagens")
             return images
