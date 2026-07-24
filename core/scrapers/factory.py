@@ -41,6 +41,7 @@ from .pt_br.fenixproject_scraper import FenixProjectScraper
 from .pt_br.acervoeremita_scraper import AcervoEremitaScraper
 from .pt_br.imperiodabritannia_scraper import ImperioDaBritanniaScraper
 from .pt_br.nyxscans_scraper import NyxScansScraper
+from .pt_br.noxtoons_scraper import NoxToonsScraper
 
 def get_scraper_for_url(url):
     url_lower = url.lower()
@@ -114,8 +115,6 @@ def get_scraper_for_url(url):
         return TiraninhaScraper()
     elif 'safirescan.site' in url_lower or 'safirescan.xyz' in url_lower or 'safirescan' in url_lower:
         return SafireScanScraper()
-    elif 'sushiscan.net' in url_lower or 'sushiscan' in url_lower:
-        return SushiScanScraper()
     elif 'tiamanhwa.com' in url_lower or 'tiamanhwa' in url_lower:
         return TiaManhwaScraper()
     elif 'zinmanga.com' in url_lower or 'zinmanga' in url_lower:
@@ -145,5 +144,7 @@ def get_scraper_for_url(url):
         return AniArgosScraper()
     elif 'nyxscans.com' in url_lower or 'nyxscans' in url_lower:
         return NyxScansScraper()
+    elif 'noxtoons.com' in url_lower or 'noxtoons' in url_lower:
+        return NoxToonsScraper()
     # Default to Asura
     return AsuraScraper()

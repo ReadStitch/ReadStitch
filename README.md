@@ -89,6 +89,8 @@ Baixe capítulos diretamente dos principais sites de leitura:
 | [Fenix Project](https://fenixproject.site) | ✅ |
 | [Acervo Eremita](https://acervoeremita.com) | ✅ |
 | [Império da Britannia](https://imperiodabritannia.net) | ✅ |
+| [Nyx Scans](https://nyxscans.com) | ✅ |
+| [NoxToons](https://noxtoons.com) | ✅ |
 
 </td>
 </tr>

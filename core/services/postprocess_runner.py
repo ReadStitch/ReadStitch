@@ -106,12 +106,13 @@ class PostProcessRunner:
             stdout_pipe.close()
         return_code = proc.wait()
         if return_code:
-            # Check if waifu2x failed due to Vulkan/GPU driver issues (often exit code 3221225477 or 4294967295)
+            # Check if upscaler failed due to Vulkan/GPU driver issues (often exit code 3221225477 or 4294967295)
             # If so, try falling back to CPU mode using '-g -1' if not already specified.
-            is_waifu = any("waifu2x" in part.lower() for part in command)
+            is_upscaler = any(any(x in part.lower() for x in ["waifu2x", "realesrgan", "esrgan"]) for part in command)
             has_cpu_flag = "-g" in command or any(part.startswith("-g") for part in command)
-            if is_waifu and not has_cpu_flag:
-                console_func("\n[Aviso] Falha de GPU/Vulkan detectada no Waifu2X (código {}). Tentando novamente em modo CPU...\n".format(return_code))
+            
+            if is_upscaler and not has_cpu_flag:
+                console_func("\n[Aviso] Falha de GPU/Vulkan detectada (código {}). Tentando novamente em modo CPU...\n".format(return_code))
                 cpu_command = list(command)
                 cpu_command.extend(["-g", "-1"])
                 proc_cpu = subprocess.Popen(
