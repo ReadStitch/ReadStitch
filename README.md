@@ -19,12 +19,12 @@
 
 ## O que é o ReadStitch?
 
-O **ReadStitch** é um projeto que nasceu da fusão de dois poderosos projetos open-source:
+O **ReadStitch** é um projeto construído a partir do repositório **[MedStitch](https://github.com/ViminioSM/MedStitch)**, ao qual integramos um sistema completo de download de capítulos aliado à fusão de duas excelentes ferramentas open-source de processamento:
 
 - 🧵 **[SmartStitch](https://github.com/MechTechnology/SmartStitch)** — ferramenta inteligente para unir e cortar imagens de webtoons e manhwas com detecção avançada de pixels.
 - 🖼️ **[Waifu2x-Extension-GUI](https://github.com/AaronFeng753/Waifu2x-Extension-GUI)** — software de upscaling de imagens com remoção de artefatos visuais e aumento de resolução via IA.
 
-Combinando o melhor dos dois mundos, o ReadStitch entrega uma pipeline completa para quem consome ou trabalha com **webtoons, manhwas e manhuas**: desde o download das raws até o processamento e corte das imagens para leitura.
+Partindo da estrutura do MedStitch para o processamento das imagens, o ReadStitch acopla um robusto sistema de download (com scrapers inteligentes, autenticação oculta sem navegador e suporte a dezenas de sites em EN, PT-BR, KR e JP), interligando as pontas para oferecer uma pipeline ponta a ponta: desde a extração automática dos capítulos na internet até a união, corte preciso e upscaling para leitura ou tradução.
 
 ---
 
@@ -217,10 +217,14 @@ O ReadStitch é um projeto de código aberto. Toda contribuição é bem-vinda!
 
 ## Créditos
 
-Este projeto é construído sobre o trabalho incrível de:
+Este projeto é construído a partir e em reconhecimento ao trabalho incrível dos seguintes repositórios e desenvolvedores:
 
-- **[SmartStitch](https://github.com/MechTechnology/SmartStitch)** by MechTechnology
-- **[Waifu2x-Extension-GUI](https://github.com/AaronFeng753/Waifu2x-Extension-GUI)** by AaronFeng753
+- **[MedStitch](https://github.com/ViminioSM/MedStitch)** por **ViminioSM** — *Repositório base do qual partimos para integrar e construir todo o sistema robusto de download (scrapers).*
+- **[waifu2x-ncnn-vulkan](https://github.com/nihui/waifu2x-ncnn-vulkan)** por **nihui** — *Responsável por reescrever o Waifu2x (original de **nagadomi**) para NCNN/Vulkan, permitindo que a IA rode de forma ultraleve e veloz por comando (CLI) em qualquer GPU sem depender de ambientes pesados ou CUDA.*
+- **[SmartStitch](https://github.com/MechTechnology/SmartStitch)** por **MechTechnology**
+- **[Waifu2x-Extension-GUI](https://github.com/AaronFeng753/Waifu2x-Extension-GUI)** por **AaronFeng753**
+- **[Tachiyomi / Mihon](https://mihon.app)** — *Inspiração e referência na estrutura modular para scrapers e bypass de proteções de imagem.*
+- E a toda a comunidade open-source e tradutores que colaboram relatando issues, aprimorando expressões regulares e mantendo os scrapers ativos!
 
 ---
 

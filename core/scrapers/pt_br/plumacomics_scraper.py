@@ -10,6 +10,11 @@ logger = logging.getLogger(__name__)
 class PlumaComicsScraper(BaseScraper):
     """Scraper para o site Pluma Comics."""
     
+    def __init__(self):
+        super().__init__()
+        self.headers['Referer'] = 'https://plumacomics.cloud/'
+        self.headers['Origin'] = 'https://plumacomics.cloud'
+
     @property
     def name(self):
         return "Pluma Comics"
@@ -25,14 +30,13 @@ class PlumaComicsScraper(BaseScraper):
         soup = BeautifulSoup(html, 'html.parser')
         
         chapters = []
-        # O Tachiyomi seleciona links dentro de .card que contenham ler
-        for a in soup.select('a[href*="/ler/"]'):
+        # O Tachiyomi seleciona links dentro de .card que contenham ler ou agora /view/
+        for a in soup.select('a[href*="/view/"]'):
             href = a.get('href')
             if not href:
                 continue
                 
             # Extrair o nome do capítulo
-            # O texto geralmente está num span dentro do 'a' ou é o próprio texto do link
             span = a.find('span')
             title = span.get_text(strip=True) if span else a.get_text(strip=True)
             
@@ -42,7 +46,6 @@ class PlumaComicsScraper(BaseScraper):
             
             # Monta a URL absoluta com o título como âncora para a GUI usar no nome do capítulo
             url = urljoin("https://plumacomics.cloud", href)
-            # Adiciona o título como âncora, ex: url#capitulo-1
             if title:
                 import re
                 match = re.search(r'(\d+(?:\.\d+)?)', title)
@@ -54,7 +57,7 @@ class PlumaComicsScraper(BaseScraper):
                 
             chapters.append(url)
             
-        # Deduplicar preservando a ordem (que costuma ser do mais recente para o mais antigo)
+        # Deduplicar preservando a ordem
         seen = set()
         ordered_chapters = []
         for ch in chapters:
@@ -72,30 +75,26 @@ class PlumaComicsScraper(BaseScraper):
     def get_chapter_images(self, chapter_url):
         logger.info(f"[{self.name}] Fetching images from: {chapter_url}")
         
-        # O ID do capítulo é a última parte da URL ignorando a âncora
-        # ex: https://plumacomics.cloud/ler/2463#Capitulo-1
-        clean_url = chapter_url.split('#')[0].strip('/')
-        chapter_id = clean_url.split('/')[-1]
-        api_url = f"https://plumacomics.cloud/api/viewer/bootstrap?c={chapter_id}"
-        
         try:
-            req = urllib.request.Request(api_url, headers=self.headers)
-            resp = urllib.request.urlopen(req).read().decode('utf-8')
-            data = json.loads(resp)
-        except Exception as e:
-            logger.error(f"[{self.name}] Erro ao consultar API de leitura: {e}")
-            raise Exception("Falha ao obter dados do capítulo via API")
+            # A url do capítulo deve ignorar a âncora para buscar o HTML real
+            clean_url = chapter_url.split('#')[0]
+            html = self._fetch_html(clean_url)
+            soup = BeautifulSoup(html, 'html.parser')
             
-        if 'pages' not in data:
-            logger.error(f"[{self.name}] Nenhuma imagem no JSON retornado")
-            raise Exception("O capítulo não possui imagens acessíveis")
-            
-        images = []
-        for page in data['pages']:
-            u = page.get('u')
-            if u:
-                img_url = urljoin("https://plumacomics.cloud", u)
-                images.append(img_url)
+            images = []
+            for img in soup.find_all('img'):
+                src = img.get('src')
+                # Procura por imagens de capítulos e ignora ícones/logos/capas
+                if src and ('cdn.' in src or '/chapters/' in src or '/cap-' in src) and not any(x in src.lower() for x in ['logo', 'icon', 'cover', 'branding', 'banner']):
+                    images.append(src)
+                    
+            if not images:
+                logger.error(f"[{self.name}] Nenhuma imagem encontrada no HTML")
+                raise Exception("O capítulo não possui imagens acessíveis")
                 
-        logger.info(f"[{self.name}] Encontradas {len(images)} imagens")
-        return images
+            logger.info(f"[{self.name}] Encontradas {len(images)} imagens")
+            return images
+            
+        except Exception as e:
+            logger.error(f"[{self.name}] Erro ao buscar imagens do capítulo: {e}")
+            raise Exception(f"Falha ao obter dados do capítulo: {e}")

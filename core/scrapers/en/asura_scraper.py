@@ -21,29 +21,42 @@ class AsuraScraper(BaseScraper):
         self.credentials = None
         self._access_token = None
 
-    def _get_access_token(self):
-        if self._access_token:
+    def _get_access_token(self, force_refresh=False):
+        if not force_refresh and self._access_token:
+            self.headers["Authorization"] = f"Bearer {self._access_token}"
+            self.headers["Cookie"] = f"access_token={self._access_token}"
             return self._access_token
 
-        # Tenta carregar do cache
         cache_file = os.path.join(os.path.expanduser("~"), ".asura_token_cache")
-        if os.path.exists(cache_file):
+        if force_refresh:
+            self._access_token = None
+            if os.path.exists(cache_file):
+                try:
+                    os.remove(cache_file)
+                except Exception:
+                    pass
+
+        # Tenta carregar do cache se não for forçar renovação
+        if not force_refresh and os.path.exists(cache_file):
             try:
                 with open(cache_file, "r") as f:
                     self._access_token = f.read().strip()
                 if self._access_token:
+                    self.headers["Authorization"] = f"Bearer {self._access_token}"
+                    self.headers["Cookie"] = f"access_token={self._access_token}"
                     return self._access_token
-            except:
+            except Exception:
                 pass
 
         if not self.credentials:
+            print("[AsuraScraper] Nenhuma credencial de acesso foi preenchida para a Asura.")
             return None
 
         email, password = self.credentials
         if not email or not password:
             return None
 
-        print("[AsuraScraper] Não há token salvo. Fazendo login na API Asura (sem abrir navegador)...")
+        print("[AsuraScraper] Autenticando na API do Asura Scans por debaixo dos panos (sem abrir navegador)...")
         try:
             login_url = "https://api.asurascans.com/api/auth/login"
             payload = json.dumps({"email": email, "password": password}).encode('utf-8')
@@ -52,7 +65,7 @@ class AsuraScraper(BaseScraper):
                 data=payload, 
                 headers={
                     "Content-Type": "application/json",
-                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+                    "User-Agent": self.headers.get("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)")
                 }
             )
             
@@ -64,7 +77,6 @@ class AsuraScraper(BaseScraper):
                 if cookies:
                     for cookie in cookies:
                         if 'access_token=' in cookie:
-                            # O cookie vem no formato "access_token=VALOR; Path=..."
                             match = re.search(r'access_token=([^;]+)', cookie)
                             if match:
                                 self._access_token = match.group(1)
@@ -76,13 +88,15 @@ class AsuraScraper(BaseScraper):
                         json_resp = json.loads(response_data)
                         if 'data' in json_resp and 'access_token' in json_resp['data']:
                             self._access_token = json_resp['data']['access_token']
-                    except:
+                    except Exception:
                         pass
                 
                 if self._access_token:
-                    print("[AsuraScraper] Token capturado com sucesso via API!")
+                    print("[AsuraScraper] Login bem sucedido! Token de acesso capturado via API.")
                     with open(cache_file, "w") as f:
                         f.write(self._access_token)
+                    self.headers["Authorization"] = f"Bearer {self._access_token}"
+                    self.headers["Cookie"] = f"access_token={self._access_token}"
                     return self._access_token
                 else:
                     print("[AsuraScraper] Login bem sucedido, mas não foi possível encontrar o token na resposta.")
@@ -91,8 +105,8 @@ class AsuraScraper(BaseScraper):
             try:
                 error_msg = e.read().decode('utf-8')
                 print(f"[AsuraScraper] Erro ao fazer login na API: {error_msg}")
-            except:
-                print(f"[AsuraScraper] Erro de conexão na API de login: {e}")
+            except Exception:
+                print(f"[AsuraScraper] Erro de conexão ao tentar fazer login na API: {e}")
 
         return None
 
@@ -103,6 +117,9 @@ class AsuraScraper(BaseScraper):
         """
         if "/chapter/" in series_url:
             return [series_url]
+            
+        # Tenta carregar token (do cache ou logado) para garantir acesso a links de assinantes
+        self._get_access_token()
             
         try:
             req = urllib.request.Request(series_url, headers=self.headers)
@@ -146,8 +163,8 @@ class AsuraScraper(BaseScraper):
             return img_url
 
         try:
-            # Baixa a imagem embaralhada em memória
-            req = urllib.request.Request(img_url, headers={"User-Agent": "Mozilla/5.0"})
+            # Baixa a imagem embaralhada em memória utilizando os cabeçalhos autenticados
+            req = urllib.request.Request(img_url, headers=self.headers)
             with urllib.request.urlopen(req) as response:
                 img_data = response.read()
             
@@ -190,7 +207,6 @@ class AsuraScraper(BaseScraper):
         """
         Fetches the chapter page and extracts all image URLs using the API.
         """
-        # Extrair slug e número do capítulo da URL: https://asuracomic.net/comics/slug-f886a8af/chapter/97
         path = urllib.parse.urlparse(chapter_url).path
         match = re.search(r'/(?:comics|series)/([^/]+)/chapter/([^/]+)', path)
         if not match:
@@ -199,25 +215,36 @@ class AsuraScraper(BaseScraper):
         
         slug = match.group(1)
         chapter_number = match.group(2)
-
-        token = self._get_access_token()
-        
         api_endpoint = f"{self.api_url}/series/{slug}/chapters/{chapter_number}"
         
-        req = urllib.request.Request(api_endpoint, headers={"User-Agent": "Mozilla/5.0"})
-        if token:
-            req.add_header("Authorization", f"Bearer {token}")
-            req.add_header("Cookie", f"access_token={token}")
+        # Garante carregamento inicial do token
+        self._get_access_token(force_refresh=False)
+        
+        def _fetch():
+            req = urllib.request.Request(api_endpoint, headers=self.headers)
+            try:
+                with urllib.request.urlopen(req) as response:
+                    return json.loads(response.read().decode('utf-8'))
+            except Exception as e:
+                print(f"[AsuraScraper] Falha na requisição API: {e}")
+                return None
 
         print(f"[AsuraScraper] Buscando imagens na API: {api_endpoint}")
-        try:
-            with urllib.request.urlopen(req) as response:
-                data = json.loads(response.read().decode('utf-8'))
-        except Exception as e:
-            print(f"[AsuraScraper] Falha ao acessar API ({e}). Talvez precise de credenciais Premium válidas e Login falhou.")
-            return []
+        data = _fetch()
 
-        if 'data' not in data or 'chapter' not in data['data'] or 'pages' not in data['data']['chapter']:
+        # Verifica se falhou ou se veio sem páginas (indicando token expirado/capítulo protegido)
+        missing_pages = (not data or 'data' not in data or 'chapter' not in data['data'] or not data['data']['chapter'].get('pages'))
+        
+        # Se as páginas vieram vazias mas você preencheu email/senha, o token no cache pode estar vencido/inválido.
+        if missing_pages and self.credentials and self.credentials[0] and self.credentials[1]:
+            print("[AsuraScraper] O capítulo está protegido ou o token expirou. Renovando login automaticamente sem navegador...")
+            new_token = self._get_access_token(force_refresh=True)
+            if new_token:
+                print("[AsuraScraper] Refazendo requisição do capítulo com o novo login...")
+                data = _fetch()
+                
+        if not data or 'data' not in data or 'chapter' not in data['data'] or not data['data']['chapter'].get('pages'):
+            print("[AsuraScraper] Não foi possível carregar as imagens. Se este capítulo é exclusivo, verifique se seu email e senha têm permissão ativa na Asura Scans.")
             return []
 
         pages = data['data']['chapter']['pages']
