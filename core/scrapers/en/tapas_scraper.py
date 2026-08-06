@@ -3,7 +3,7 @@ import re
 import urllib.request
 import urllib.parse
 from http.cookiejar import CookieJar
-from typing import List, Dict, Optional
+from typing import List, Optional
 
 from bs4 import BeautifulSoup
 from core.scrapers.base_scraper import BaseScraper

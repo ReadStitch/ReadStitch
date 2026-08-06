@@ -1,6 +1,5 @@
 import os
 import re
-import time
 from bs4 import BeautifulSoup
 from ..base_scraper import BaseScraper
 
@@ -89,7 +88,7 @@ class UtoonScraper(BaseScraper):
                                     try: browser.close()
                                     except: pass
                                     return chapters_html
-                            except Exception as e:
+                            except Exception:
                                 time.sleep(2)
                                 continue
                         print("AJAX fallback via evaluate falhou após 5 tentativas.")

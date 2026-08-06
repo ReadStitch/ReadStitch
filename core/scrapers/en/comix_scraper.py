@@ -1,7 +1,3 @@
-import urllib.parse
-import urllib.request
-import re
-import json
 import time
 from bs4 import BeautifulSoup
 from ..base_scraper import BaseScraper
@@ -44,7 +40,6 @@ class ComixScraper(BaseScraper):
                             for item in items:
                                 url_path = item.get('url', '')
                                 num = item.get('number', 0)
-                                title = item.get('title', '')
                                 
                                 group = item.get('group', {})
                                 group_name = group.get('name', 'Padrão') if isinstance(group, dict) else 'Padrão'
@@ -134,7 +129,7 @@ class ComixScraper(BaseScraper):
                         next_btn.click(force=True)
                         time.sleep(1.5) # Esperar o React renderizar a nova página
                         page_count += 1
-                    except Exception as e:
+                    except Exception:
                         break
                     
             browser.close()
@@ -330,8 +325,6 @@ class ComixScraper(BaseScraper):
 
     def download_image(self, url, output_path):
         import urllib.request
-        from io import BytesIO
-        from PIL import Image
         
         is_scrambled = url.endswith("#scrambled")
         clean_url = url.split("#")[0]

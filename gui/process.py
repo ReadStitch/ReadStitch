@@ -818,7 +818,6 @@ class GuiStitchProcess:
         from time import time as _time
         from core.models.work_directory import WorkDirectory
         from core.utils.constants import POSTPROCESS_SUFFIX, SUPPORTED_IMG_TYPES
-        from natsort import natsorted
 
         start_time = _time()
         status_func(0, "Waifu-only: explorando pasta de entrada...")

@@ -1,11 +1,8 @@
 import os
-import re
-import io
 import urllib.parse
 from bs4 import BeautifulSoup
 from pycasso import Canvas
 
-from playwright.sync_api import sync_playwright
 
 from ..base_scraper import BaseScraper
 
@@ -124,7 +121,6 @@ class PiccomaScraper(BaseScraper):
                     pass
         except Exception as e:
             print("Login timeout ou erro:", e)
-            pass
             
         try:
             self.cookies = page.context.cookies()
@@ -133,7 +129,7 @@ class PiccomaScraper(BaseScraper):
             pass
 
     def get_chapters(self, series_url):
-        from playwright_stealth import Stealth
+        pass
         
         if not series_url.startswith('http'):
             series_url = 'https://' + series_url

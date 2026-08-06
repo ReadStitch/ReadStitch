@@ -1,5 +1,4 @@
 import os
-import sys
 
 # Configuração para evitar erro do Playwright no executável (PyInstaller)
 # Forçamos o caminho dos navegadores para a pasta local do usuário

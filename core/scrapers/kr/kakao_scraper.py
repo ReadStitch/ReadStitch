@@ -1,4 +1,3 @@
-import urllib.request
 from playwright.sync_api import sync_playwright
 from ..base_scraper import BaseScraper
 import time

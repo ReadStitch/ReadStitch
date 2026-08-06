@@ -2,8 +2,8 @@ import os
 from PySide6.QtCore import QThread, Signal, QObject, Qt
 from PySide6.QtWidgets import (
     QFileDialog, QMessageBox, QListWidgetItem, QComboBox, QCheckBox,
-    QProgressBar, QLabel, QHBoxLayout, QVBoxLayout, QWidget, QPushButton,
-    QSpinBox, QFrame
+    QProgressBar, QLabel, QHBoxLayout, QWidget, QPushButton, QSpinBox,
+    QFrame
 )
 from core.scrapers import get_scraper_for_url
 

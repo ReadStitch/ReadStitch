@@ -1,6 +1,5 @@
 import logging
 import urllib.request
-import json
 from urllib.parse import urljoin
 from bs4 import BeautifulSoup
 from ..base_scraper import BaseScraper

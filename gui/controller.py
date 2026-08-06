@@ -13,7 +13,7 @@ import zipfile
 import winreg
 from typing import Any, Callable
 
-from PySide6.QtCore import QEvent, QFile, QIODevice, QObject, Qt, QThread, Signal, QTimer
+from PySide6.QtCore import QEvent, QObject, Qt, QThread, Signal, QTimer
 from PySide6.QtGui import QIcon, QPixmap
 from PySide6.QtUiTools import QUiLoader
 from PySide6.QtWidgets import QApplication, QDialog, QFileDialog, QMessageBox, QProgressDialog, QSizePolicy
@@ -63,7 +63,6 @@ WAIFU_EXE_PATH = os.path.join(WAIFU_INSTALL_DIR, "waifu2x-ncnn-vulkan.exe")
 WAIFU_ARGS_JPG = "-i [stitched] -o [processed] -n 3 -s 1 -f jpg"
 WAIFU_ARGS_WEBP = "-i [stitched] -o [processed] -n 3 -s 1 -f webp"
 APP_NAME = "ReadStitch"
-APP_VENDOR = "ReadStitch"
 APP_VERSION = _load_app_version()
 GITHUB_REPO = "ReadStitch/ReadStitch"
 GITHUB_RELEASES_URL = f"https://github.com/{GITHUB_REPO}/releases/latest"
@@ -742,12 +741,7 @@ def _apply_redraw_preset() -> None:
     })
 
 
-def _load_preset(preset_name: str):
-    preset = _presets.get(preset_name)
-    if not preset:
-        return
-    _settings.save_current_settings(AppSettings(preset))
-    _load_all()
+
 
 
 def _download_and_extract_waifu2x(*, repair: bool) -> None:

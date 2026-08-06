@@ -3,7 +3,6 @@ import urllib.request
 import re
 import urllib.parse
 from bs4 import BeautifulSoup
-from typing import List, Dict, Any, Optional
 
 from ..base_scraper import BaseScraper
 from core.cloudflare_bypass import get_cookie_header

@@ -2,7 +2,6 @@ import os
 import re
 import time
 import logging
-import json
 import threading
 from bs4 import BeautifulSoup
 from ..base_scraper import BaseScraper

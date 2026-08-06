@@ -7,14 +7,11 @@ from typing import Any, Callable, List, Optional, Tuple
 
 import numpy as np
 from PIL import Image, ImageStat
-import pillow_avif
-
 from core.services.global_logger import logFunc
 
 
 # Type aliases
 Block = Tuple[int, int, int, bool]  # (x, y, height, is_white)
-Position = Tuple[int, int]  # (x, y)
 _WM_DEBUG_ENABLED = os.getenv("ReadStitch_WM_DEBUG", "0").strip().lower() in {"1", "true", "yes", "on"}
 _WM_WORKERS_LIMIT = 32
 _WM_WORKERS_DEFAULT = min(
@@ -677,7 +674,6 @@ class WatermarkService:
         scale_pct = settings.get('watermark_overlay_scale_pct', 50)
         max_per_page = settings.get('watermark_overlay_max_per_page', 1)
         margin = settings.get('watermark_overlay_margin', 10)
-        min_space = settings.get('watermark_overlay_min_space_around', 30)
 
         try:
             opacity_f = max(0.0, min(100.0, float(opacity))) / 100.0

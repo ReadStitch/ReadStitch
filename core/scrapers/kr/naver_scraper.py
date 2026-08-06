@@ -2,7 +2,6 @@ import logging
 import urllib.request
 import urllib.parse as urlparse
 import json
-import re
 from bs4 import BeautifulSoup
 from ..base_scraper import BaseScraper
 

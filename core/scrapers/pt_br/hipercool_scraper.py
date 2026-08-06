@@ -38,7 +38,7 @@ class HipercoolScraper(BaseScraper):
                             if isinstance(json_data, list) and len(json_data) > 0 and 'seriesId' in json_data[0]:
                                 for c in json_data:
                                     chapters.append(c)
-                    except Exception as e:
+                    except Exception:
                         pass
                         
             page.on("response", handle_response)

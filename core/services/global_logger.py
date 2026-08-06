@@ -27,10 +27,6 @@ class GlobalLogger:
         pil_logger = logging.getLogger('PIL')
         pil_logger.setLevel(logging.INFO)
 
-    @classmethod
-    def log_warning(cls, message, caller='GlobalLogger', *args, **kwargs):
-        log_msg = f'{caller}:{message}'
-        logging.warning(log_msg, *args, **kwargs)
 
     @classmethod
     def log_debug(cls, message, caller='GlobalLogger', *args, **kwargs):

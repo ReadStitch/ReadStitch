@@ -1,4 +1,3 @@
-import re
 import time
 from typing import List
 from playwright.sync_api import sync_playwright
@@ -33,7 +32,7 @@ class RoliascanScraper(BaseScraper):
                         }
                     }""")
                     time.sleep(1)
-                except Exception as e:
+                except Exception:
                     pass
                 
                 # Aguarda até que pelo menos um link de capítulo apareça

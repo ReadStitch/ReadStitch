@@ -1,9 +1,4 @@
 import os
-import json
-import urllib.request
-import hashlib
-import base64
-import time
 from ..base_scraper import BaseScraper
 
 class KaganeScraper(BaseScraper):
@@ -33,9 +28,7 @@ class KaganeScraper(BaseScraper):
             self.headers['Referer'] = f"{self.base_url}/"
 
     def _playwright_fetch_json(self, url: str, method: str = 'GET', data: dict = None, extra_headers: dict = None) -> dict:
-        from playwright.sync_api import sync_playwright
         import os
-        import json
         
         # Como o urllib nativo está sendo bloqueado pelo Cloudflare de qualquer forma,
         # navegamos diretamente para a URL da API usando o Chrome real (CDP).
@@ -153,7 +146,7 @@ class KaganeScraper(BaseScraper):
 
 
     def _get_drm_token(self, chapter_id: str) -> dict:
-        from playwright.sync_api import sync_playwright
+        pass
         
         profile_dir = os.path.join(os.path.expanduser("~"), ".gemini", "readstitch_browser")
         os.makedirs(profile_dir, exist_ok=True)

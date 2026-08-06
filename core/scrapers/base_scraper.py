@@ -66,7 +66,7 @@ class BaseScraper:
                     import io
                     # Garante que o plugin do avif está carregado
                     if ext == 'avif':
-                        import pillow_avif
+                        pass
                         
                     img = Image.open(io.BytesIO(data))
                     if img.mode not in ('RGB', 'RGBA'):

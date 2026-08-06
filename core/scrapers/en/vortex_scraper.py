@@ -56,12 +56,12 @@ class VortexScraper(BaseScraper):
         if "/chapter" in series_url or "/ch-" in series_url:
             return [series_url]
 
-        domain = self._detect_domain(series_url)
+        self._detect_domain(series_url)
 
         # If the URL points to a dead domain (hivetoons.com), rewrite it to the primary domain
         if "hivetoons.com" in series_url:
             series_url = series_url.replace("hivetoons.com", self.PRIMARY_DOMAIN)
-            domain = self.PRIMARY_DOMAIN
+            self.PRIMARY_DOMAIN
 
         logger.info(f"[{self.name}] Fetching chapters from: {series_url}")
 

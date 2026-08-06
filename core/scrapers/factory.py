@@ -42,6 +42,7 @@ from .pt_br.acervoeremita_scraper import AcervoEremitaScraper
 from .pt_br.imperiodabritannia_scraper import ImperioDaBritanniaScraper
 from .pt_br.nyxscans_scraper import NyxScansScraper
 from .pt_br.noxtoons_scraper import NoxToonsScraper
+from .pt_br.dropescan_scraper import DropeScanScraper
 
 def get_scraper_for_url(url):
     url_lower = url.lower()
@@ -146,5 +147,7 @@ def get_scraper_for_url(url):
         return NyxScansScraper()
     elif 'noxtoons.com' in url_lower or 'noxtoons' in url_lower:
         return NoxToonsScraper()
+    elif 'dropescan.com' in url_lower or 'dropescan' in url_lower:
+        return DropeScanScraper()
     # Default to Asura
     return AsuraScraper()

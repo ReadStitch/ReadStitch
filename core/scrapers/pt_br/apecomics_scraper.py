@@ -41,10 +41,10 @@ class ApeComicsScraper(BaseScraper):
             # O título do capítulo está dentro de um span com class "line-clamp-1"
             title_span = item.find('span', class_='line-clamp-1')
             if title_span:
-                title = title_span.text.strip()
+                title_span.text.strip()
             else:
                 # Fallback: tentar pegar do texto ou url
-                title = item.text.strip() or href.split('/')[-2].replace('-', ' ').title()
+                item.text.strip() or href.split('/')[-2].replace('-', ' ').title()
                 
             # Evita adicionar links vazios ou duplicados anormais
             chapters.append(href)

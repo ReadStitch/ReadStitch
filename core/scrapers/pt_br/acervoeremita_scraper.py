@@ -2,7 +2,6 @@ import urllib.request
 import re
 import logging
 from bs4 import BeautifulSoup
-from typing import List
 
 from ..base_scraper import BaseScraper
 

@@ -1,10 +1,8 @@
 import logging
-import json
 import urllib.request
 import re
-from typing import List, Dict, Any, Optional
 from ..base_scraper import BaseScraper
-from core.cloudflare_bypass import get_cookie_header, save_cookies, load_saved_cookies
+from core.cloudflare_bypass import get_cookie_header
 
 logger = logging.getLogger(__name__)
 

@@ -1,10 +1,8 @@
 import urllib.request
 import urllib.parse
 import re
-import json
 import logging
 from bs4 import BeautifulSoup
-from typing import List, Dict, Any, Optional
 
 from ..base_scraper import BaseScraper
 

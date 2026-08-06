@@ -2,7 +2,6 @@ import os
 import re
 import json
 import logging
-import base64
 import time
 from bs4 import BeautifulSoup
 from urllib.request import Request, urlopen

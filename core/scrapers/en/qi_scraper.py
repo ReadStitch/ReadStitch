@@ -1,8 +1,4 @@
-import os
-import urllib.request
-import urllib.parse
 import json
-import re
 import time
 from ..base_scraper import BaseScraper
 

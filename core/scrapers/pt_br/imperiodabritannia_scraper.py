@@ -1,6 +1,5 @@
 import re
 import logging
-from typing import List
 
 from ..base_scraper import BaseScraper
 
@@ -31,7 +30,6 @@ class ImperioDaBritanniaScraper(BaseScraper):
             except Exception as e:
                 logger.warning(f"[{self.name}] Erro ao carregar página, continuando mesmo assim: {e}")
                 
-            last_len = 0
             scroll_attempts = 0
             
             while scroll_attempts < 30:  # Limite máximo de cliques
