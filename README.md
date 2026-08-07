@@ -47,7 +47,6 @@ Baixe capítulos diretamente dos principais sites de leitura:
 | [Comix](https://comix.jp) | ✅ |
 | [Vortex / HiveToons](https://vortexscans.org) | ✅ |
 | [Kagane](https://kagane.org) | ✅ |
-| [Utoon](https://utoon.net) | ✅ |
 | [GenzToons](https://genztoons.org) | ✅ |
 | [Tapas](https://tapas.io) | ✅ |
 | [RoliaScan](https://roliascan.com) | ✅ |

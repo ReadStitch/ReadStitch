@@ -1,6 +1,5 @@
 from .en.asura_scraper import AsuraScraper
 from .pt_br.tiamanhwa_scraper import TiaManhwaScraper
-from .en.utoon_scraper import UtoonScraper
 from .en.qi_scraper import QiScraper
 from .en.vortex_scraper import VortexScraper
 from .en.comix_scraper import ComixScraper
@@ -54,8 +53,6 @@ def get_scraper_for_url(url):
         return WebtoonScraper()
     elif 'kakao.com' in url_lower:
         return KakaoScraper()
-    elif 'utoon.net' in url_lower:
-        return UtoonScraper()
     elif 'qimanhwa.com' in url_lower or 'qimanga.com' in url_lower:
         return QiScraper()
     elif any(d in url_lower for d in ('vortexscans.org', 'vortexscans.com', 'hivetoons.org', 'hivetoons.com')):

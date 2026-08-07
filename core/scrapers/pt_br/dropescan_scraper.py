@@ -45,6 +45,7 @@ class DropeScanScraper(BaseScraper):
                     c_id = chapter.get('ChapterId')
                     c_version = chapter.get('ChapterVersion', '1')
                     obra_id = chapter.get('ChapterObraId')
+                    chapter_number = chapter.get('ChapterNumber')
                     
                     if not obra_id:
                         # Se não tiver, tenta extrair da URL da série
@@ -55,6 +56,8 @@ class DropeScanScraper(BaseScraper):
                     
                     if c_id and obra_id:
                         url = f"https://beta.dropescan.com/obras/{obra_id}/{c_id}/{c_version}"
+                        if chapter_number is not None:
+                            url += f"?chapter={chapter_number}"
                         chapters.append(url)
             except Exception as e:
                 logger.error(f"[{self.name}] Erro ao parsear JSON das chapters: {e}")
@@ -65,11 +68,19 @@ class DropeScanScraper(BaseScraper):
             base_url = f"{parsed.scheme}://{parsed.netloc}"
             
             links = soup.find_all('a', href=True)
+            seen_urls = set()
+            import re
             for a in links:
                 href = a['href']
                 if '/obras/' in href and href.count('/') >= 4: # /obras/id/cap_id/1
                     full_url = f"{base_url}{href}" if href.startswith('/') else href
-                    if full_url not in chapters and full_url != series_url:
+                    base_full = full_url.split('?')[0]
+                    if base_full not in seen_urls and base_full != series_url.split('?')[0]:
+                        seen_urls.add(base_full)
+                        chapter_text = a.get_text(strip=True)
+                        match = re.search(r'(?:Capítulo|Cap|Chapter|Ch)\s*(\d+(?:\.\d+)?)', chapter_text, re.IGNORECASE)
+                        if match:
+                            full_url += f"?chapter={match.group(1)}"
                         chapters.append(full_url)
                         
         def get_chapter_num(link):
@@ -84,9 +95,10 @@ class DropeScanScraper(BaseScraper):
         return chapters
 
     def get_chapter_images(self, chapter_url):
-        logger.info(f"[{self.name}] Fetching images from: {chapter_url}")
+        clean_url = chapter_url.split('?')[0].split('#')[0]
+        logger.info(f"[{self.name}] Fetching images from: {clean_url}")
         
-        req = urllib.request.Request(chapter_url, headers=self.headers)
+        req = urllib.request.Request(clean_url, headers=self.headers)
         with urllib.request.urlopen(req) as response:
             html = response.read().decode('utf-8', errors='ignore')
             
