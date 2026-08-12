@@ -42,6 +42,7 @@ from .pt_br.imperiodabritannia_scraper import ImperioDaBritanniaScraper
 from .pt_br.nyxscans_scraper import NyxScansScraper
 from .pt_br.noxtoons_scraper import NoxToonsScraper
 from .pt_br.dropescan_scraper import DropeScanScraper
+from .pt_br.hanamiheaven_scraper import HanamiHeavenScraper
 
 def get_scraper_for_url(url):
     url_lower = url.lower()
@@ -146,5 +147,7 @@ def get_scraper_for_url(url):
         return NoxToonsScraper()
     elif 'dropescan.com' in url_lower or 'dropescan' in url_lower:
         return DropeScanScraper()
+    elif 'hanamiheaven.org' in url_lower or 'hanamiheaven' in url_lower:
+        return HanamiHeavenScraper()
     # Default to Asura
     return AsuraScraper()

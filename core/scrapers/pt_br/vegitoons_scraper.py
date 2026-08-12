@@ -93,6 +93,13 @@ class VegitoonsScraper(BaseScraper):
                 
             images = []
             for p in pages:
+                if isinstance(p, str):
+                    if p.startswith('http'):
+                        images.append(p)
+                    elif p.startswith('/'):
+                        images.append(f"{self.cdn_url}{p}")
+                    continue
+                    
                 img_src = p.get('src') or p.get('path')
                 if img_src:
                     if img_src.startswith('/'):
