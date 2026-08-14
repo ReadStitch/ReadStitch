@@ -39,9 +39,17 @@ class VegitoonsScraper(BaseScraper):
         parts = [p for p in series_url.split('?')[0].split('/') if p]
         
         try:
-            # O ID geralmente vem logo após /obra/
-            obra_idx = parts.index('obra')
-            obra_id = parts[obra_idx + 1]
+            obra_id = None
+            if 'obra' in parts:
+                obra_id = parts[parts.index('obra') + 1]
+            elif 'obras' in parts:
+                obra_id = parts[parts.index('obras') + 1]
+            else:
+                nums = [p for p in parts if p.isdigit()]
+                if nums:
+                    obra_id = nums[0]
+                else:
+                    raise Exception("URL inválida ou ID da obra não encontrado.")
             
             # Pega os detalhes da obra na API
             details_url = f"{self.api_url}/obras/{obra_id}"
@@ -86,7 +94,7 @@ class VegitoonsScraper(BaseScraper):
             if not pages:
                 raise Exception("O capítulo não possui imagens acessíveis")
                 
-            obra_dict = chap_data.get('obra', {})
+            obra_dict = chap_data.get('obra') or {}
             scan_id = obra_dict.get('scan_id', 1)
             obr_id = chap_data.get('obr_id')
             cap_numero = chap_data.get('cap_numero')

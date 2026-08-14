@@ -111,11 +111,15 @@ class DownloadThread(QThread):
                 last_chap_name = chap_name
                 self.log.emit(f"Baixando {chap_name}...")
                 
-                count = self.scraper.download_chapter(chap_url, base_path, chap_name)
-                if count == 0:
-                    raise Exception(f"Nenhuma imagem encontrada ou erro ao baixar {chap_name}.")
-                
-                self.log.emit(f"✓ {chap_name}: {count} imagens salvas.")
+                try:
+                    count = self.scraper.download_chapter(chap_url, base_path, chap_name)
+                    if count == 0:
+                        raise Exception(f"Nenhuma imagem encontrada ou erro ao baixar {chap_name}.")
+                    
+                    self.log.emit(f"✓ {chap_name}: {count} imagens salvas.")
+                except Exception as e:
+                    self.log.emit(f"⚠️ Erro em {chap_name}: {str(e)}. Pulando para o próximo...")
+                    
                 self.progress.emit(i + 1, total)
                 
             if total == 1:

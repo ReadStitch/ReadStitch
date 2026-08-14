@@ -165,13 +165,20 @@ class VerdinhaScraper(BaseScraper):
             if not pages:
                 raise Exception("O capÃ­tulo nÃ£o possui imagens acessÃ­veis")
                 
-            obra_dict = chap_data.get('obra', {})
+            obra_dict = chap_data.get('obra') or {}
             scan_id = obra_dict.get('scan_id', 1)
             obr_id = chap_data.get('obr_id')
             cap_numero = chap_data.get('cap_numero')
             
             images = []
             for p in pages:
+                if isinstance(p, str):
+                    if p.startswith('http'):
+                        images.append(p)
+                    elif p.startswith('/'):
+                        images.append(f"https://cdn.verdinha.wtf{p}")
+                    continue
+                    
                 # O novo JSON usa 'src' em vez de 'path'
                 img_src = p.get('src') or p.get('path')
                 if img_src:
