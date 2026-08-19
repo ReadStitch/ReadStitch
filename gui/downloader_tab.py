@@ -6,6 +6,7 @@ from PySide6.QtWidgets import (
     QFrame
 )
 from core.scrapers import get_scraper_for_url
+from core.utils.uc_manager import UCManager
 
 class FetchThread(QThread):
     finished = Signal(dict)
@@ -32,6 +33,8 @@ class FetchThread(QThread):
             self.finished.emit(groups)
         except Exception as e:
             self.error.emit(str(e))
+        finally:
+            UCManager.get_instance().close()
 
 class FetchLanguagesThread(QThread):
     finished = Signal(dict)
@@ -48,6 +51,8 @@ class FetchLanguagesThread(QThread):
                 self.finished.emit(langs)
         except Exception:
             pass
+        finally:
+            UCManager.get_instance().close()
 
 class DownloadThread(QThread):
     progress = Signal(int, int) # current, total
@@ -130,6 +135,8 @@ class DownloadThread(QThread):
             self.success.emit(final_path)
         except Exception as e:
             self.error.emit(str(e))
+        finally:
+            UCManager.get_instance().close()
 
 class DownloaderController(QObject):
     def __init__(self, main_window, settings):
@@ -428,7 +435,13 @@ class DownloaderController(QObject):
         
         if len(groups_dict) > 1:
             self.groupWidget.setVisible(True)
-            self.dlGroupCombo.addItems(list(groups_dict.keys()))
+            keys = list(groups_dict.keys())
+            self.dlGroupCombo.addItems(keys)
+            
+            # Auto-selecionar o grupo com mais capítulos
+            largest_group = max(groups_dict.keys(), key=lambda k: len(groups_dict[k]))
+            idx = keys.index(largest_group)
+            self.dlGroupCombo.setCurrentIndex(idx)
         else:
             self.groupWidget.setVisible(False)
             group_name = list(groups_dict.keys())[0]

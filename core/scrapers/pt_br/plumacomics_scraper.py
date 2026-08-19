@@ -26,6 +26,11 @@ class PlumaComicsScraper(BaseScraper):
     def get_chapters(self, series_url):
         logger.info(f"[{self.name}] Fetching chapters from: {series_url}")
         html = self._fetch_html(series_url)
+        
+        if "Breve Manutenção" in html or "em manutenção" in html.lower():
+            logger.error(f"[{self.name}] Site em manutenção")
+            raise Exception("O site Pluma Comics está em manutenção no momento.")
+            
         soup = BeautifulSoup(html, 'html.parser')
         
         chapters = []
@@ -78,6 +83,11 @@ class PlumaComicsScraper(BaseScraper):
             # A url do capítulo deve ignorar a âncora para buscar o HTML real
             clean_url = chapter_url.split('#')[0]
             html = self._fetch_html(clean_url)
+            
+            if "Breve Manutenção" in html or "em manutenção" in html.lower():
+                logger.error(f"[{self.name}] Site em manutenção")
+                raise Exception("O site Pluma Comics está em manutenção no momento.")
+                
             soup = BeautifulSoup(html, 'html.parser')
             
             images = []
@@ -97,3 +107,4 @@ class PlumaComicsScraper(BaseScraper):
         except Exception as e:
             logger.error(f"[{self.name}] Erro ao buscar imagens do capítulo: {e}")
             raise Exception(f"Falha ao obter dados do capítulo: {e}")
+
