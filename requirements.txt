@@ -12,3 +12,4 @@ playwright-stealth
 image-scramble
 pillow-avif-plugin
 requests
+undetected-chromedriver

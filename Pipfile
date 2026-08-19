@@ -18,6 +18,7 @@ pyside6 = "*"
 pyqtdarktheme = "*"
 psd-tools = "*"
 requests = "*"
+undetected-chromedriver = "*"
 
 [dev-packages]
 flake8 = "*"
