@@ -11,6 +11,7 @@ from .en.mangadex_scraper import MangadexScraper
 from .en.kagane_scraper import KaganeScraper
 from .en.comikey_scraper import ComikeyScraper
 from .en.ezmanga_scraper import EzmangaScraper
+from .en.duskscans_scraper import DuskScansScraper
 
 from .kr.kakao_scraper import KakaoScraper
 from .kr.naver_scraper import NaverScraper
@@ -122,6 +123,8 @@ def get_scraper_for_url(url):
         return ComikeyScraper()
     elif 'ezmanga.org' in url_lower or 'ezmanga' in url_lower:
         return EzmangaScraper()
+    elif 'duskscans.com' in url_lower or 'duskscans' in url_lower:
+        return DuskScansScraper()
     elif 'flamecomics' in url_lower:
         from .en.flamecomics_scraper import FlameComicsScraper
         return FlameComicsScraper()

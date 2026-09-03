@@ -88,16 +88,34 @@ class PlumaComicsScraper(BaseScraper):
                 logger.error(f"[{self.name}] Site em manutenção")
                 raise Exception("O site Pluma Comics está em manutenção no momento.")
                 
-            soup = BeautifulSoup(html, 'html.parser')
+            # Limpa escapes comuns de JSON gerado pelo Next.js
+            html_clean = html.replace('\\/', '/').replace('\\u002F', '/').replace('\\u0026', '&')
+            
+            import re
+            # Busca todas as URLs de imagem (absolutas) no HTML, incluindo parâmetros (ex: ?expires=...&sig=...)
+            matches = re.finditer(r'(https?://[^\s"\'`\\]+\.(?:jpg|jpeg|png|webp|avif)(?:\?[^\s"\'`\\]+)?)', html_clean)
             
             images = []
-            for img in soup.find_all('img'):
-                src = img.get('src')
-                # Procura por imagens de capítulos e ignora ícones/logos/capas
-                if src and ('cdn.' in src or '/chapters/' in src or '/cap-' in src) and not any(x in src.lower() for x in ['logo', 'icon', 'cover', 'branding', 'banner']):
-                    images.append(src)
-                    
+            seen = set()
+            for m in matches:
+                src = m.group(1)
+                # Filtra apenas imagens válidas de capítulos, ignorando branding
+                if ('cdn.' in src or '/chapters/' in src or '/cap-' in src) and not any(x in src.lower() for x in ['logo', 'icon', 'cover', 'branding', 'banner', 'avatar']):
+                    if src not in seen:
+                        seen.add(src)
+                        images.append(src)
+                        
+            # Tenta fallback para imgs normais caso não encontre via regex no JSON
             if not images:
+                soup = BeautifulSoup(html, 'html.parser')
+                for img in soup.find_all('img'):
+                    src = img.get('src')
+                    if src and ('cdn.' in src or '/chapters/' in src or '/cap-' in src) and not any(x in src.lower() for x in ['logo', 'icon', 'cover', 'branding', 'banner']):
+                        if src.startswith('/'):
+                            src = f"https://plumacomics.cloud{src}"
+                        if src not in seen:
+                            seen.add(src)
+                            images.append(src)
                 logger.error(f"[{self.name}] Nenhuma imagem encontrada no HTML")
                 raise Exception("O capítulo não possui imagens acessíveis")
                 

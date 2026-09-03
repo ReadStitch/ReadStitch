@@ -134,9 +134,9 @@ class TiraninhaScraper(BaseScraper):
         target_dir = os.path.join(output_dir, chapter_name)
         os.makedirs(target_dir, exist_ok=True)
         
-        logger.info(f"[{self.name}] Baixando capítulo usando novo gatekeeper...")
+        logger.info(f"[{self.name}] Carregando página do capítulo...")
         
-        # 1. Fetch chapter page to get _proxyUrls and chapter HTML
+        # 1. Fetch chapter page to get the image script and chapter HTML
         try:
             req = Request(chapter_url, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'})
             html = urlopen(req).read().decode('utf-8', errors='ignore')
@@ -144,11 +144,73 @@ class TiraninhaScraper(BaseScraper):
         except Exception as e:
             logger.error(f"[{self.name}] Erro ao carregar página: {e}")
             return 0
+            
+        import concurrent.futures
+
+        # Check for the new base64 canvas format
+        pages_script = soup.find('script', string=re.compile(r'var\s+pages\s*=\s*\['))
+        if pages_script:
+            logger.info(f"[{self.name}] Novo formato detectado (base64 canvas)")
+            match = re.search(r'var\s+pages\s*=\s*\[(.*?)\]', pages_script.string, re.DOTALL)
+            if match:
+                import base64
+                
+                paths_b64 = [p.strip().strip('"').strip("'") for p in match.group(1).split(',')]
+                paths_b64 = [p for p in paths_b64 if p]
+                
+                try:
+                    urls = [base64.b64decode(p).decode('utf-8') for p in paths_b64]
+                except Exception as e:
+                    logger.error(f"[{self.name}] Erro ao decodificar base64: {e}")
+                    return 0
+                
+                logger.info(f"[{self.name}] Encontradas {len(urls)} imagens esperadas")
+                
+                def _download_simple(args):
+                    idx, url = args
+                    headers = {
+                        "Accept": "*/*",
+                        "Referer": chapter_url,
+                        "User-Agent": 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                    }
+                    try:
+                        img_req = Request(url, headers=headers)
+                        img_data = urlopen(img_req).read()
+                        
+                        ext = "jpg"
+                        if img_data.startswith(b'\x89PNG\r\n\x1a\n'):
+                            ext = "png"
+                        elif img_data.startswith(b'\xff\xd8\xff'):
+                            ext = "jpg"
+                        elif img_data.startswith(b'RIFF') and img_data[8:12] == b'WEBP':
+                            ext = "webp"
+                        elif img_data[4:8] == b'ftyp' and b'avif' in img_data[8:12]:
+                            ext = "avif"
+                        elif img_data.startswith(b'GIF87a') or img_data.startswith(b'GIF89a'):
+                            ext = "gif"
+                            
+                        out_path = os.path.join(target_dir, f"{idx+1:03d}.{ext}")
+                        with open(out_path, "wb") as f:
+                            f.write(img_data)
+                        logger.info(f"[{self.name}] Imagem {idx+1} salva.")
+                        return True
+                    except Exception as e:
+                        logger.error(f"[{self.name}] Erro ao processar imagem {idx+1}: {e}")
+                        return False
+
+                with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+                    results = list(executor.map(_download_simple, enumerate(urls)))
+                saved_count = sum(1 for r in results if r)
+                logger.info(f"[{self.name}] Finalizado. Total salvo: {saved_count}")
+                return saved_count
+        
+        # Fallback to the old gatekeeper logic
+        logger.info(f"[{self.name}] Formato antigo detectado (gatekeeper)")
         
         # Extract proxyUrls
         proxy_script = soup.find('script', string=re.compile(r'_proxyUrls'))
         if not proxy_script:
-            logger.error(f"[{self.name}] _proxyUrls não encontrado na página")
+            logger.error(f"[{self.name}] _proxyUrls e pages n\u00e3o encontrados na p\u00e1gina")
             return 0
         
         match = re.search(r'_proxyUrls\s*=\s*\[(.*?)\]', proxy_script.string, re.DOTALL)
@@ -189,18 +251,17 @@ class TiraninhaScraper(BaseScraper):
             return 0
             
         if not token:
-            logger.error(f"[{self.name}] Token não retornado pelo gatekeeper")
+            logger.error(f"[{self.name}] Token n\u00e3o retornado pelo gatekeeper")
             return 0
             
         parts = token.split('.')
         if len(parts) < 2:
-            logger.error(f"[{self.name}] Token JWT inválido")
+            logger.error(f"[{self.name}] Token JWT inv\u00e1lido")
             return 0
             
         xor_key = parts[1][4:20]
         logger.info(f"[{self.name}] Token obtido com sucesso. Chave XOR: {xor_key}")
         
-        import concurrent.futures
         def _download_image(args):
             idx, img_path = args
             url = f"{self.base_url}{img_path}"

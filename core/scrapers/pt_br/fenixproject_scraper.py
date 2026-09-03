@@ -124,20 +124,55 @@ class FenixProjectScraper(BaseScraper):
             
             # Intercepta as requisições para pescar os links das imagens
             def handle_request(req):
+                # Extrai a URL sem query parameters para verificação
+                url_no_query = req.url.split('?')[0].lower()
+                
                 # O padrão wp-content/uploads/WP-manga/data é padrão do Madara
-                if 'WP-manga/data' in req.url or 'fenixproject.site/wp-content/uploads' in req.url:
+                if 'wp-manga/data' in url_no_query or 'fenixproject.site/wp-content/uploads' in url_no_query:
                     # Filtra arquivos de imagem
-                    if req.url.endswith(('.jpg', '.jpeg', '.png', '.webp')):
+                    if url_no_query.endswith(('.jpg', '.jpeg', '.png', '.webp', '.avif')):
                         # Ignora elementos de UI comuns do site
-                        if not any(ui in req.url.lower() for ui in ['logo', 'background', 'cursor', 'avatar', '-75x106', '-32x32', 'seta']):
+                        if not any(ui in url_no_query for ui in ['logo', 'background', 'cursor', 'avatar', '-75x106', '-32x32', 'seta']):
                             if req.url not in image_urls:
                                 image_urls.append(req.url)
                                 
             page.on("request", handle_request)
             
             try:
+                # Garante que a página abra no modo lista (todas as imagens) e não paginado
+                fetch_url = chapter_url
+                if 'style=list' not in fetch_url:
+                    fetch_url += '&style=list' if '?' in fetch_url else '?style=list'
+
                 # O site faz o decrypt logo ao carregar a página
-                page.goto(chapter_url, wait_until="networkidle", timeout=60000)
+                page.goto(fetch_url, wait_until="domcontentloaded", timeout=60000)
+                
+                # Scroll incremental robusto para forçar o carregamento de todas as imagens lazy-loaded
+                page.evaluate('''
+                    async () => {
+                        await new Promise((resolve) => {
+                            let lastHeight = 0;
+                            let retries = 0;
+                            let timer = setInterval(() => {
+                                window.scrollBy(0, 800);
+                                let currentHeight = document.body.scrollHeight;
+                                if (currentHeight === lastHeight) {
+                                    retries++;
+                                    if (retries >= 15) { // Espera 1.5s sem mudança de altura
+                                        clearInterval(timer);
+                                        resolve();
+                                    }
+                                } else {
+                                    retries = 0;
+                                    lastHeight = currentHeight;
+                                }
+                            }, 100);
+                        });
+                    }
+                ''')
+                # Espera as requisições disparadas pelo scroll terminarem
+                page.wait_for_timeout(5000)
+                
             except Exception as e:
                 logger.warning(f"[{self.name}] Timeout ou erro no Playwright (ignorável se carregou imagens): {e}")
 

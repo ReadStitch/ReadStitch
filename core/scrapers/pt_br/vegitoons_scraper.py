@@ -96,8 +96,9 @@ class VegitoonsScraper(BaseScraper):
                 
             obra_dict = chap_data.get('obra') or {}
             scan_id = obra_dict.get('scan_id', 1)
-            obr_id = chap_data.get('obr_id')
+            obr_id = chap_data.get('obr_id') or obra_dict.get('obr_id')
             cap_numero = chap_data.get('cap_numero')
+            is_wp = chap_data.get('is_wp', False)
                 
             images = []
             for p in pages:
@@ -110,12 +111,10 @@ class VegitoonsScraper(BaseScraper):
                     
                 img_src = p.get('src') or p.get('path')
                 if img_src:
-                    if img_src.startswith('/'):
-                        images.append(f"{self.cdn_url}/wp-content/uploads/WP-manga/data/{img_src.lstrip('/')}")
-                    elif '/' in img_src:
+                    if is_wp:
                         images.append(f"{self.cdn_url}/wp-content/uploads/WP-manga/data/{img_src.lstrip('/')}")
                     else:
-                        images.append(f"{self.cdn_url}/scans/{scan_id}/obras/{obr_id}/capitulos/{cap_numero}/{img_src}")
+                        images.append(f"{self.cdn_url}/scans/{scan_id}/obras/{obr_id}/capitulos/{cap_numero}/{img_src.lstrip('/')}")
                     
             logger.info(f"[{self.name}] Encontradas {len(images)} imagens")
             return images

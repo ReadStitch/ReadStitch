@@ -4,7 +4,7 @@ import concurrent.futures
 
 class BaseScraper:
     def __init__(self):
-        self.headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
+        self.headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'}
 
     def get_chapter_groups(self, series_url):
         # By default, returns a single "Padrão" (Default) group with all chapters

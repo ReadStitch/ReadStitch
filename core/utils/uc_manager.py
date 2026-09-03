@@ -35,6 +35,17 @@ class UCManager:
                 self._driver = uc.Chrome(options=options, version_main=version_override)
             else:
                 self._driver = uc.Chrome(options=options)
+                
+            # Ativar bloqueio de anúncios via CDP para evitar popups/redirecionamentos chatos
+            self._driver.execute_cdp_cmd('Network.enable', {})
+            self._driver.execute_cdp_cmd('Network.setBlockedURLs', {
+                "urls": [
+                    "*popunder*", "*onclick*", "*adserver*", "*doubleclick*", "*popads*", 
+                    "*exoclick*", "*juicyads*", "*trafficstars*", "*ero-advertising*", 
+                    "*adxpansion*", "*realsrv*", "*bet*", "*casino*"
+                ]
+            })
+            
         except Exception as e:
             err_msg = str(e)
             print(f"Erro ao inicializar driver: {err_msg}")
@@ -60,11 +71,46 @@ class UCManager:
         # Lógica de espera do Cloudflare (espera sumir 'Just a moment', 'Attention Required', etc)
         start_time = time.time()
         bypassed = False
+        window_brought_to_front = False
         while time.time() - start_time < wait_timeout:
             title = driver.title
-            if title and not any(cf_txt in title for cf_txt in ["Just a moment", "Cloudflare", "Attention Required", "Um momento", "Verificando"]):
+            current_url = driver.current_url
+            
+            # Fechar possíveis pop-unders que abrem em novas abas
+            if len(driver.window_handles) > 1:
+                try:
+                    main_window = driver.window_handles[0]
+                    for handle in driver.window_handles[1:]:
+                        driver.switch_to.window(handle)
+                        driver.close()
+                    driver.switch_to.window(main_window)
+                except:
+                    pass
+            
+            domain_expected = url.split('/')[2]
+            if domain_expected not in current_url and "challenges.cloudflare.com" not in current_url:
+                print(f"Redirecionamento de Ad detectado para {current_url}. Forçando volta...")
+                driver.get(url)
+                time.sleep(2)
+                continue
+                
+            if title and not any(cf_txt in title for cf_txt in ["Just a moment", "Cloudflare", "Attention Required", "Um momento", "Verificando", "Security challenge"]):
                 bypassed = True
                 break
+                
+            # Se já passou muito tempo (8s) e ainda não passou, o Turnstile pode exigir interação.
+            # Trazemos a janela de volta para a tela para o usuário ver/clicar se necessário.
+            if not window_brought_to_front and time.time() - start_time > 8:
+                print("Cloudflare persistente detectado. Trazendo janela para a tela para resolução manual se necessário...")
+                try:
+                    driver.set_window_position(0, 0)
+                    driver.maximize_window()
+                except Exception:
+                    pass
+                window_brought_to_front = True
+                # Podemos também aumentar o timeout um pouco já que agora dependemos do usuário
+                wait_timeout += 15
+                
             time.sleep(2)
             
         if not bypassed:
