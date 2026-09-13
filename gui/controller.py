@@ -18,7 +18,6 @@ from PySide6.QtGui import QIcon, QPixmap
 from PySide6.QtUiTools import QUiLoader
 from PySide6.QtWidgets import QApplication, QDialog, QFileDialog, QMessageBox, QProgressDialog, QSizePolicy
 
-from assets.ReadStitchLogo import icon
 from core.services import SettingsHandler
 from core.utils.constants import OUTPUT_SUFFIX
 from gui.build_version import APP_BUILD_VERSION
@@ -190,9 +189,7 @@ def initialize_gui(
     _settings.save("postprocess_app", WAIFU_EXE_PATH)
     _settings.save("postprocess_args", WAIFU_ARGS_JPG)
 
-    pixmap = QPixmap()
-    pixmap.loadFromData(icon)
-    _main_window.setWindowIcon(QIcon(pixmap))
+    _main_window.setWindowIcon(QIcon(_ICON_FILE))
     _main_window.setWindowTitle(f"{APP_NAME} v{APP_VERSION}")
     
     import sys
@@ -472,6 +469,12 @@ def _on_load() -> None:
         elif text == "Asura Scans":
             _main_window.loginEmailInput.setText(_settings.load("asura_email"))
             _main_window.loginPassInput.setText(_settings.load("asura_password"))
+        elif text == "TakeComic":
+            _main_window.loginEmailInput.setText(_settings.load("takecomic_email"))
+            _main_window.loginPassInput.setText(_settings.load("takecomic_password"))
+        elif text == "KakaoPage":
+            _main_window.loginEmailInput.setText(_settings.load("kakao_email"))
+            _main_window.loginPassInput.setText(_settings.load("kakao_password"))
 
     on_login_site_changed(_main_window.loginSiteCombo.currentText())
     _main_window.parallelProcessingCheckbox.setChecked(
@@ -548,6 +551,9 @@ def _bind_signals() -> None:
         elif text == "Asura Scans":
             _main_window.loginEmailInput.setText(_settings.load("asura_email"))
             _main_window.loginPassInput.setText(_settings.load("asura_password"))
+        elif text == "KakaoPage":
+            _main_window.loginEmailInput.setText(_settings.load("kakao_email"))
+            _main_window.loginPassInput.setText(_settings.load("kakao_password"))
 
     w.loginSiteCombo.currentTextChanged.connect(on_login_site_changed)
 
@@ -571,6 +577,10 @@ def _bind_signals() -> None:
             _settings.save("aniargos_email", text)
         elif site == "Asura Scans":
             _settings.save("asura_email", text)
+        elif site == "TakeComic":
+            _settings.save("takecomic_email", text)
+        elif site == "KakaoPage":
+            _settings.save("kakao_email", text)
 
     def on_login_pass_changed(text):
         site = w.loginSiteCombo.currentText()
@@ -592,6 +602,10 @@ def _bind_signals() -> None:
             _settings.save("aniargos_password", text)
         elif site == "Asura Scans":
             _settings.save("asura_password", text)
+        elif site == "TakeComic":
+            _settings.save("takecomic_password", text)
+        elif site == "KakaoPage":
+            _settings.save("kakao_password", text)
 
     w.loginEmailInput.textChanged.connect(on_login_email_changed)
     w.loginPassInput.textChanged.connect(on_login_pass_changed)
