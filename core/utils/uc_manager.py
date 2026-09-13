@@ -18,17 +18,22 @@ class UCManager:
         if UCManager._instance is not None:
             raise Exception("Esta é uma classe Singleton. Use UCManager.get_instance().")
             
-    def get_driver(self):
+    def get_driver(self, profile_dir=None, extra_args=None):
         """Retorna uma instância persistente do driver."""
         if self._driver is None:
-            self._init_driver()
+            self._init_driver(profile_dir=profile_dir, extra_args=extra_args)
         return self._driver
         
-    def _init_driver(self, version_override=None):
+    def _init_driver(self, version_override=None, profile_dir=None, extra_args=None):
         options = uc.ChromeOptions()
         # Omitimos o headless=True porque Cloudflare bloqueia headles=new com Turnstile.
         # Movemos a janela para fora da tela para mantê-la invisível sem acionar proteções anti-bot
         options.add_argument('--window-position=-32000,-32000')
+        if profile_dir:
+            options.add_argument(f"--user-data-dir={profile_dir}")
+        if extra_args:
+            for arg in extra_args:
+                options.add_argument(arg)
         try:
             print("Inicializando undetected_chromedriver...")
             if version_override:
@@ -55,7 +60,7 @@ class UCManager:
             if match and not version_override:
                 detected_version = int(match.group(1))
                 print(f"Detectada versão local do Chrome: {detected_version}. Tentando novamente...")
-                self._init_driver(version_override=detected_version)
+                self._init_driver(version_override=detected_version, profile_dir=profile_dir, extra_args=extra_args)
             else:
                 raise e
 
@@ -145,5 +150,5 @@ class UCManager:
 def get_cf_session(url: str) -> requests.Session:
     return UCManager.get_instance().get_cloudflare_session(url)
 
-def get_uc_driver():
-    return UCManager.get_instance().get_driver()
+def get_uc_driver(profile_dir=None, extra_args=None):
+    return UCManager.get_instance().get_driver(profile_dir=profile_dir, extra_args=extra_args)
