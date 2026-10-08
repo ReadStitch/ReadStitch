@@ -2,6 +2,7 @@ from .en.asura_scraper import AsuraScraper
 from .pt_br.tiamanhwa_scraper import TiaManhwaScraper
 from .en.qi_scraper import QiScraper
 from .en.vortex_scraper import VortexScraper
+from .en.nyxscans_scraper import NyxScansScraper
 from .en.comix_scraper import ComixScraper
 from .en.webtoon_scraper import WebtoonScraper
 from .en.genz_scraper import GenzScraper
@@ -12,12 +13,16 @@ from .en.kagane_scraper import KaganeScraper
 from .en.comikey_scraper import ComikeyScraper
 from .en.ezmanga_scraper import EzmangaScraper
 from .en.duskscans_scraper import DuskScansScraper
+from .en.omegascans_scraper import OmegaScansScraper
+from .en.toongod_scraper import ToonGodScraper
 
 from .kr.kakao_scraper import KakaoScraper
 from .kr.naver_scraper import NaverScraper
 
 from .jp.piccoma_scraper import PiccomaScraper
 from .jp.comicwalker_scraper import ComicWalkerScraper
+from .jp.senmanga_scraper import SenMangaScraper
+from .jp.takecomic_scraper import TakeComicScraper
 
 from .pt_br.apecomics_scraper import ApeComicsScraper
 from .pt_br.plumacomics_scraper import PlumaComicsScraper
@@ -40,8 +45,7 @@ from .pt_br.mangalivre_blog_scraper import MangaLivreBlogScraper
 from .pt_br.fenixproject_scraper import FenixProjectScraper
 from .pt_br.acervoeremita_scraper import AcervoEremitaScraper
 from .pt_br.imperiodabritannia_scraper import ImperioDaBritanniaScraper
-from .pt_br.nyxscans_scraper import NyxScansScraper
-from .pt_br.noxtoons_scraper import NoxToonsScraper
+from .pt_br.noxmangas_scraper import NoxMangasScraper
 from .pt_br.dropescan_scraper import DropeScanScraper
 from .pt_br.hanamiheaven_scraper import HanamiHeavenScraper
 
@@ -65,6 +69,10 @@ def get_scraper_for_url(url):
         return PiccomaScraper()
     elif 'comic-walker.com' in url_lower or 'kadocomi' in url_lower:
         return ComicWalkerScraper()
+    elif 'senmanga.com' in url_lower or 'senmanga' in url_lower:
+        return SenMangaScraper()
+    elif 'takecomic.jp' in url_lower or 'takecomic' in url_lower:
+        return TakeComicScraper()
     elif 'capitoons.com' in url_lower or 'apecomics' in url_lower:
         return ApeComicsScraper()
     elif 'plumacomics' in url_lower:
@@ -77,8 +85,7 @@ def get_scraper_for_url(url):
         return InkapkScraper()
     elif 'tapas.io' in url_lower:
         return TapasScraper()
-    elif 'safirescan.site' in url_lower:
-        return SafireScanScraper()
+
     elif 'mangalivre.net' in url_lower or 'mangalivre.com' in url_lower:
         return MangaLivreBlogScraper()
     elif 'fenixproject.site' in url_lower:
@@ -113,8 +120,7 @@ def get_scraper_for_url(url):
         return KaganeScraper()
     elif 'tiraninha.world' in url_lower or 'tiraninha' in url_lower:
         return TiraninhaScraper()
-    elif 'safirescan.site' in url_lower or 'safirescan.xyz' in url_lower or 'safirescan' in url_lower:
-        return SafireScanScraper()
+
     elif 'tiamanhwa.com' in url_lower or 'tiamanhwa' in url_lower:
         return TiaManhwaScraper()
     elif 'zinmanga.com' in url_lower or 'zinmanga' in url_lower:
@@ -138,19 +144,23 @@ def get_scraper_for_url(url):
     elif 'elftoon.com' in url_lower or 'elftoon' in url_lower:
         from .en.elftoon_scraper import ElftoonScraper
         return ElftoonScraper()
-    elif 'erosect.xyz' in url_lower or 'erosect' in url_lower:
-        from .pt_br.erosect_scraper import ErosectScraper
-        return ErosectScraper()
     elif 'aniargos.com' in url_lower or 'aniargos' in url_lower:
         from .pt_br.aniargos_scraper import AniArgosScraper
         return AniArgosScraper()
     elif 'nyxscans.com' in url_lower or 'nyxscans' in url_lower:
         return NyxScansScraper()
-    elif 'noxtoons.com' in url_lower or 'noxtoons' in url_lower:
-        return NoxToonsScraper()
+    elif 'noxmangas.org' in url_lower or 'noxmangas' in url_lower:
+        return NoxMangasScraper()
     elif 'dropescan.com' in url_lower or 'dropescan' in url_lower:
         return DropeScanScraper()
     elif 'hanamiheaven.org' in url_lower or 'hanamiheaven' in url_lower:
         return HanamiHeavenScraper()
+    elif 'safirescan.site' in url_lower or 'safirescan' in url_lower:
+        from .pt_br.safirescan_scraper import SafireScanScraper
+        return SafireScanScraper()
+    elif 'omegascans.org' in url_lower or 'omegascans' in url_lower:
+        return OmegaScansScraper()
+    elif 'toongod.org' in url_lower or 'toongod' in url_lower:
+        return ToonGodScraper()
     # Default to Asura
     return AsuraScraper()

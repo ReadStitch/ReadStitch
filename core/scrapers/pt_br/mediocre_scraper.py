@@ -73,9 +73,18 @@ class MediocreScraper(BaseScraper):
             raise Exception("A MediocreToons requer login obrigatório. Faça login no aplicativo primeiro.")
             
         req = urllib.request.Request(url, headers=self.headers)
-        with urllib.request.urlopen(req) as response:
-            data = response.read().decode('utf-8', errors='ignore')
-            return json.loads(data)
+        try:
+            with urllib.request.urlopen(req) as response:
+                data = response.read().decode('utf-8', errors='ignore')
+                return json.loads(data)
+        except urllib.error.HTTPError as e:
+            try:
+                error_body = e.read().decode('utf-8', errors='ignore')
+                error_json = json.loads(error_body)
+                msg = error_json.get('message', str(e))
+                raise Exception(f"API Error ({e.code}): {msg}")
+            except:
+                raise Exception(f"API Error ({e.code}): {e.reason}")
 
     def get_chapters(self, series_url):
         logger.info(f"[{self.name}] Fetching chapters from: {series_url}")

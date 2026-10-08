@@ -29,26 +29,8 @@ class ComicWalkerScraper(BaseScraper):
         queries = page_props.get('dehydratedState', {}).get('queries', [])
         chapters = []
 
-        # If it's an episode URL, fetch just the single episode
-        if '/episodes/' in series_url:
-            for q in queries:
-                if 'episode' in str(q.get('queryKey', [])):
-                    ep_data = q.get('state', {}).get('data', {}).get('episode')
-                    if ep_data:
-                        title = ep_data.get('title', 'Episode')
-                        if ep_data.get('subTitle'):
-                            title += " - " + ep_data['subTitle']
-                        
-                        num_match = re.search(r'(\d+(?:\.\d+)?)', title)
-                        if num_match:
-                            chapter_num = num_match.group(1)
-                            url = self.api_viewer_url.format(ep_data['id']) + f"&chapter={chapter_num}"
-                        else:
-                            url = self.api_viewer_url.format(ep_data['id']) + f"&cap=0"
-                        chapters.append(url)
-                        return chapters
-
-        # If it's a series URL, fetch all free available episodes
+        # Fetch all free available episodes for both series and episode URLs
+        seen_urls = set()
         for q in queries:
             if 'workCode' in str(q.get('queryKey', [])) and 'state' in q:
                 work = q['state'].get('data', {})
@@ -66,7 +48,10 @@ class ComicWalkerScraper(BaseScraper):
                                 url = self.api_viewer_url.format(ep['id']) + f"&chapter={chapter_num}"
                             else:
                                 url = self.api_viewer_url.format(ep['id']) + f"&cap=0"
-                            chapters.append(url)
+                            
+                            if url not in seen_urls:
+                                seen_urls.add(url)
+                                chapters.append(url)
         
         return chapters
 

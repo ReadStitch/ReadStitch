@@ -855,6 +855,38 @@ class GuiStitchProcess:
             dirname = os.path.basename(wd.input_path) or wd.input_path
             status_func(pct, f"Waifu-only - [{idx}/{total}] {dirname}")
             console_func(f"Waifu-only: processando '{dirname}'...\n")
+            
+            # Converter PSDs para o formato selecionado antes de passar no Waifu
+            try:
+                from psd_tools import PSDImage
+                from PIL import Image as pil
+                for fname in os.listdir(wd.input_path):
+                    ext = os.path.splitext(fname)[1].lower()
+                    if ext in ('.psd', '.psb'):
+                        psd_path = os.path.join(wd.input_path, fname)
+                        console_func(f"Waifu-only: convertendo {fname} para {snap.export_format}...\n")
+                        try:
+                            psd = PSDImage.open(psd_path)
+                            img = psd.topil()
+                            if img is None:
+                                img = psd.composite()
+                            if img:
+                                if img.mode not in ("RGB", "RGBA"):
+                                    img = img.convert("RGB")
+                                target_ext = f".{snap.export_format.lower()}"
+                                if target_ext in ('.jpg', '.jpeg') and img.mode == 'RGBA':
+                                    bg = pil.new("RGB", img.size, (255, 255, 255))
+                                    bg.paste(img, mask=img.split()[3])
+                                    img = bg
+                                out_fname = os.path.splitext(fname)[0] + target_ext
+                                out_path = os.path.join(wd.input_path, out_fname)
+                                img.save(out_path, format=snap.export_format)
+                                # Opcional: Console log avisando sucesso
+                        except Exception as e:
+                            console_func(f"Erro ao converter {fname}: {e}\n")
+            except ImportError:
+                pass
+            
             try:
                 postprocess_runner.run(
                     workdirectory=wd,

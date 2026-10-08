@@ -219,14 +219,14 @@ class DownloaderController(QObject):
         self.spinFrom = QSpinBox()
         self.spinFrom.setMinimum(0)
         self.spinFrom.setMaximum(9999)
-        self.spinFrom.setFixedWidth(65)
+        self.spinFrom.setMinimumWidth(80)
         self.spinFrom.setValue(0)
         actionBarLayout.addWidget(self.spinFrom)
         actionBarLayout.addWidget(QLabel("até"))
         self.spinTo = QSpinBox()
         self.spinTo.setMinimum(0)
         self.spinTo.setMaximum(9999)
-        self.spinTo.setFixedWidth(65)
+        self.spinTo.setMinimumWidth(80)
         self.spinTo.setValue(0)
         actionBarLayout.addWidget(self.spinTo)
 
@@ -288,8 +288,26 @@ class DownloaderController(QObject):
             site = "Blackout Comics"
         elif "tiamanhwa" in url_lower:
             site = "Tia Manhwa"
+        elif "takecomic" in url_lower:
+            site = "TakeComic"
+        elif "kakao.com" in url_lower:
+            site = "KakaoPage"
         else:
-            return  # URL não reconhecida — não mexe no combo
+            site = None
+
+        if not url.strip():
+            self.dlStatusLabel.setVisible(False)
+        else:
+            self.dlStatusLabel.setVisible(True)
+            scraper = get_scraper_for_url(url)
+            scraper_name = scraper.__class__.__name__.replace("Scraper", "")
+            if scraper_name == "Asura" and "asura" not in url_lower and "flame" not in url_lower:
+                self.dlStatusLabel.setText("⚠️ Link não reconhecido nativamente. Tentando usar a engine Genérica (Madara/Asura).")
+            else:
+                self.dlStatusLabel.setText(f"✅ Site identificado: {scraper_name}")
+
+        if site is None:
+            return
 
         combo = self.w.loginSiteCombo
         idx = combo.findText(site)

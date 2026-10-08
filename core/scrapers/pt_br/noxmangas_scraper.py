@@ -7,10 +7,10 @@ from ..base_scraper import BaseScraper
 
 logger = logging.getLogger(__name__)
 
-class NoxToonsScraper(BaseScraper):
+class NoxMangasScraper(BaseScraper):
     def __init__(self):
         super().__init__()
-        self.base_url = "https://noxtoons.com"
+        self.base_url = "https://noxmangas.org"
         self.headers.update({
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36',
             'Referer': f"{self.base_url}/"
@@ -18,7 +18,7 @@ class NoxToonsScraper(BaseScraper):
 
     @property
     def name(self):
-        return "NoxToons"
+        return "NoxMangas"
 
     def _fetch_html(self, url):
         req = urllib.request.Request(url, headers=self.headers)
@@ -32,10 +32,10 @@ class NoxToonsScraper(BaseScraper):
         soup = BeautifulSoup(html, 'html.parser')
         
         chapters = []
-        # As URLs de capítulos estão no formato /ler/<slug-do-manga>/capitulo-<numero>
+        # As URLs de capítulos estão no formato /ler/<slug-do-manga>/capitulo-<numero> ou /read/...
         for a in soup.find_all('a', href=True):
             href = a['href']
-            if href.startswith('/ler/') and ('capitulo' in href or 'chapter' in href):
+            if ('/ler/' in href or '/read/' in href) and ('capitulo' in href or 'chapter' in href):
                 full_url = f"{self.base_url}{href}" if href.startswith('/') else href
                 if full_url not in chapters:
                     chapters.append(full_url)
@@ -67,7 +67,7 @@ class NoxToonsScraper(BaseScraper):
         img_tags = soup.find_all('img')
         for img in img_tags:
             src = img.get('src') or img.get('data-src')
-            if src and ('/chapters/' in src or '/uploads/' in src):
+            if src and ('/chapters/' in src or '/uploads/' in src or '/ii/' in src):
                 full_src = src
                 if src.startswith('/'):
                     full_src = f"{self.base_url}{src}"

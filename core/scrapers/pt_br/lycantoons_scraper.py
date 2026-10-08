@@ -110,7 +110,7 @@ class LycanToonsScraper(BaseScraper):
         
         # Aguardar as imagens renderizarem no DOM
         try:
-            WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.CSS_SELECTOR, "img[src*='cdn.lycantoons.com']")))
+            WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.CSS_SELECTOR, "img[src^='http']")))
         except Exception as e:
             logger.warning(f"[{self.name}] Timeout aguardando imagens: {e}")
             
@@ -126,8 +126,8 @@ class LycanToonsScraper(BaseScraper):
             for (let key in obj) {
                 try {
                     let val = obj[key];
-                    if (typeof val === 'string' && val.includes('cdn.lycantoons.com')) {
-                        let matches = val.match(/https:\\/\\/cdn\\.lycantoons\\.com[^"']+/g);
+                    if (typeof val === 'string' && (val.includes('.webp') || val.includes('.jpg') || val.includes('.png') || val.includes('.jpeg')) && val.startsWith('http')) {
+                        let matches = val.match(/https?:\\/\\/[^"\\s]+\\.(webp|jpg|jpeg|png)/ig);
                         if (matches) { matches.forEach(m => urls.add(m)); }
                         else { urls.add(val); }
                     } else if (typeof val === 'object') {
@@ -153,9 +153,10 @@ class LycanToonsScraper(BaseScraper):
             fiber_urls = driver.execute_script(js_script)
             if fiber_urls:
                 for src in fiber_urls:
-                    if 'cdn.lycantoons.com' in src:
-                        # Em vez de exigir 'page-' ou 'cap-', ignoramos as pastas conhecidas que não são do mangá
-                        if not any(x in src.lower() for x in ['/covers/', '/avatars/', '/profile-covers/', '/comments/', '/banners/']):
+                    # Somente aceitar imagens que vêm de CDNs conhecidas ou possuem formato de página de mangá
+                    src_lower = src.lower()
+                    if 'cdn.lycantoons.com' in src_lower or 'discordapp.com' in src_lower or '/file/lycantoons/' in src_lower or '/cap-' in src_lower or 'page-' in src_lower:
+                        if not any(x in src_lower for x in ['logo', 'avatar', 'discord', 'banner', 'ui-avatars', '/covers/', '/comments/', '/profile-covers/', 'favicon', 'icon', 'og-image']):
                             images.append(src)
         except Exception as e:
             logger.warning(f"[{self.name}] Falha ao extrair do React Fiber: {e}")
@@ -190,21 +191,36 @@ class LycanToonsScraper(BaseScraper):
             html = driver.page_source
             soup = bs4.BeautifulSoup(html, "html.parser")
             for img in soup.find_all('img'):
-                src = img.get('src')
-                if src and 'http' in src and not any(x in src.lower() for x in ['logo', 'avatar', 'discord', 'banner', 'ui-avatars', '/covers/', '/comments/', '/profile-covers/']):
-                    if 'cdn.lycantoons.com' in src:
-                        images.append(src)
-                    elif 'cdn.discordapp.com' in src:
-                        images.append(src)
+                src = img.get('src') or img.get('data-src')
+                if src and 'http' in src:
+                    src_lower = src.lower()
+                    if 'cdn.lycantoons.com' in src_lower or 'discordapp.com' in src_lower or '/file/lycantoons/' in src_lower or '/cap-' in src_lower or 'page-' in src_lower:
+                        if not any(x in src_lower for x in ['logo', 'avatar', 'discord', 'banner', 'ui-avatars', '/covers/', '/comments/', '/profile-covers/', 'favicon', 'icon', 'og-image']):
+                            images.append(src)
                         
         # Remover duplicatas e manter ordem
         images = list(dict.fromkeys(images))
         
+        # DEBUG: Dump images to file
+        try:
+            import json
+            with open(r"f:\Projetos\programa\ReadStitch\scratch\lycan_debug.json", "w", encoding="utf-8") as f:
+                json.dump(images, f, indent=2)
+        except Exception:
+            pass
+        
         if not images:
             raise Exception("O capítulo não possui imagens acessíveis no DOM ou State")
             
-        self._uc_cookies = session.cookies.get_dict()
-        self._uc_ua = session.headers.get('User-Agent')
+        # Extrair cookies e user-agent diretamente do navegador que passou pelo Cloudflare
+        try:
+            driver_cookies = driver.get_cookies()
+            self._uc_cookies = {c['name']: c['value'] for c in driver_cookies}
+            self._uc_ua = driver.execute_script("return navigator.userAgent;")
+        except Exception as e:
+            logger.warning(f"[{self.name}] Falha ao extrair cookies do navegador: {e}")
+            self._uc_cookies = session.cookies.get_dict()
+            self._uc_ua = session.headers.get('User-Agent')
             
         logger.info(f"[{self.name}] Encontradas {len(images)} imagens!")
         return images

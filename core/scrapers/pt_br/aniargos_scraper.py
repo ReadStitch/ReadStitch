@@ -89,7 +89,11 @@ class AniArgosScraper(BaseScraper):
             if return_images:
                 def handle_request(request):
                     req_url = request.url
-                    if ('supabase' in req_url or 'cdn.aniargos' in req_url) and 'logo' not in req_url.lower():
+                    if req_url.startswith('data:'):
+                        return
+                    if any(ignore in req_url.lower() for ignore in ['google', 'analytics', 'doubleclick', 'logo', 'avatar', 'icon', 'banner']):
+                        return
+                    if request.resource_type == 'image' or any(ext in req_url.lower() for ext in ['.jpg', '.jpeg', '.png', '.webp', 'supabase', 'cdn', 'yomu']):
                         if req_url not in intercepted_images:
                             intercepted_images.append(req_url)
                 page.on("request", handle_request)
@@ -258,28 +262,35 @@ class AniArgosScraper(BaseScraper):
                 soup = BeautifulSoup(html, 'html.parser')
                 
                 for img in soup.find_all('img'):
-                    src = img.get('src') or img.get('srcset')
-                    if src and ('supabase' in src or 'cdn' in src or '_next/image' in src) and 'logo' not in src.lower():
-                        if src.startswith('/_next/image?url='):
-                            import urllib.parse
-                            actual_src = urllib.parse.unquote(src.split('url=')[1].split('&')[0])
-                            images.append(actual_src)
-                        else:
-                            images.append(src if src.startswith('http') else f"https:{src}" if src.startswith('//') else f"{self.base_url}{src}")
+                    src = img.get('src') or img.get('data-src') or img.get('srcset')
+                    if src:
+                        if ',' in src:
+                            src = src.split(',')[0].strip().split(' ')[0]
+                        src_lower = src.lower()
+                        if not any(ignore in src_lower for ignore in ['logo', 'avatar', 'icon', 'banner', 'google']):
+                            if src.startswith('/_next/image?url='):
+                                import urllib.parse
+                                actual_src = urllib.parse.unquote(src.split('url=')[1].split('&')[0])
+                                images.append(actual_src)
+                            else:
+                                images.append(src if src.startswith('http') else f"https:{src}" if src.startswith('//') else f"{self.base_url}{src}")
                             
             if not images:
                 # Tenta regex no NextJS Data
                 m = re.search(r'\\"pages\\":(\[.*?\])', html)
                 if m:
                     pages_str = m.group(1).replace('\\"', '"')
-                    images_list = json.loads(pages_str)
-                    for img in images_list:
-                        if img.startswith('http'):
-                            images.append(img)
-                        elif img.startswith('//'):
-                            images.append(f"https:{img}")
-                        else:
-                            images.append(f"https://cdn.aniargos.com{img}")
+                    try:
+                        images_list = json.loads(pages_str)
+                        for img in images_list:
+                            if img.startswith('http'):
+                                images.append(img)
+                            elif img.startswith('//'):
+                                images.append(f"https:{img}")
+                            else:
+                                images.append(f"{self.base_url}{img}")
+                    except:
+                        pass
                             
             # Remover duplicatas mantendo ordem
             seen = set()

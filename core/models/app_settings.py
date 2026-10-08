@@ -52,6 +52,8 @@ class AppSettings:
     aniargos_password: str = ""
     asura_email: str = ""
     asura_password: str = ""
+    kakao_email: str = ""
+    kakao_password: str = ""
     last_login_site: str = "Piccoma"
 
     gemini_api_key: str = ""

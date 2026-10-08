@@ -26,22 +26,34 @@ class NyxScansScraper(BaseScraper):
         series_path = parsed.path.rstrip('/')
         series_slug = series_path.split('/')[-1]
         
-        # 1. Busca links renderizados no HTML
-        links = re.findall(r'href=[\'"](/series/[^\'"]+)[\'"]', html)
-        
-        # 2. Busca slugs ocultos no estado Next.js (paginação)
-        slugs = re.findall(r'\\*"slug\\*":\\*"([^\\"]+)\\*"', html)
-        
         chapters = []
-        for link in links:
-            if link != series_path and link not in chapters:
-                chapters.append(link)
-                
-        for slug in slugs:
-            if slug != series_slug:
-                link = f"{series_path}/{slug}"
-                if link not in chapters:
+        
+        # Busca no estado Next.js, que possui a flag isAccessible
+        chapter_blocks = re.findall(r'\{\\\"id\\\":\d+,\\\"number\\\":[\d\.]+,.*?\\\"isAccessible\\\":(?:true|false).*?\}', html)
+        if chapter_blocks:
+            for block in chapter_blocks:
+                unescaped = block.replace('\\"', '"')
+                slug_match = re.search(r'"slug":"([^"]+)"', unescaped)
+                if slug_match and '"isAccessible":true' in unescaped:
+                    slug = slug_match.group(1)
+                    if slug != series_slug:
+                        link = f"{series_path}/{slug}"
+                        if link not in chapters:
+                            chapters.append(link)
+        else:
+            # Fallback
+            links = re.findall(r'href=[\'"](/series/[^\'"]+)[\'"]', html)
+            slugs = re.findall(r'\\*"slug\\*":\\*"([^\\"]+)\\*"', html)
+            
+            for link in links:
+                if link != series_path and link not in chapters:
                     chapters.append(link)
+                    
+            for slug in slugs:
+                if slug != series_slug:
+                    link = f"{series_path}/{slug}"
+                    if link not in chapters:
+                        chapters.append(link)
                 
         def get_chapter_num(link):
             match = re.search(r'chapter-([\d\.]+)', link)

@@ -57,7 +57,7 @@ QLineEdit, QSpinBox, QDoubleSpinBox, QComboBox {
     background-color: #242424;
     border: 1px solid #333333;
     border-radius: 6px;
-    padding: 8px 12px;
+    padding: 4px 8px;
     color: #ffffff;
     selection-background-color: #fb5c00;
     selection-color: #ffffff;
@@ -76,6 +76,39 @@ QComboBox QAbstractItemView {
     border-radius: 6px;
     selection-background-color: #fb5c00;
     selection-color: #ffffff;
+}
+
+QSpinBox::up-button, QDoubleSpinBox::up-button {
+    subcontrol-origin: padding;
+    subcontrol-position: top right;
+    width: 20px;
+    border-left: 1px solid #333333;
+    background: transparent;
+}
+QSpinBox::up-button:hover, QDoubleSpinBox::up-button:hover {
+    background-color: rgba(251, 92, 0, 0.2);
+}
+QSpinBox::down-button, QDoubleSpinBox::down-button {
+    subcontrol-origin: padding;
+    subcontrol-position: bottom right;
+    width: 20px;
+    border-left: 1px solid #333333;
+    border-top: 1px solid #333333;
+    background: transparent;
+}
+QSpinBox::down-button:hover, QDoubleSpinBox::down-button:hover {
+    background-color: rgba(251, 92, 0, 0.2);
+}
+/* We use local SVG for the arrows */
+QSpinBox::up-arrow, QDoubleSpinBox::up-arrow {
+    image: url(./assets/up_arrow.svg);
+    width: 10px;
+    height: 10px;
+}
+QSpinBox::down-arrow, QDoubleSpinBox::down-arrow {
+    image: url(./assets/down_arrow.svg);
+    width: 10px;
+    height: 10px;
 }
 
 /* Tabs */

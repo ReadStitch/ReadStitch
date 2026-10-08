@@ -65,7 +65,7 @@ class AcervoEremitaScraper(BaseScraper):
                 }
             }'''
             
-            while scroll_attempts < 100:  # Limite máximo de iterações
+            while scroll_attempts < 1000:  # Limite máximo de iterações aumentado para obras muito longas
                 try:
                     chaps = page.evaluate("Array.from(document.querySelectorAll('a')).map(a => a.href).filter(h => h.includes('read?chapter='))")
                     chapters.update(chaps)
@@ -101,8 +101,8 @@ class AcervoEremitaScraper(BaseScraper):
             else:
                 sorted_chapters.append((0.0, url))
                 
-        # Retorna a lista de URLs ordenadas pelo número (crescente) e remove as duplicatas da tupla
-        sorted_chapters.sort(key=lambda x: x[0])
+        # Retorna a lista de URLs ordenadas pelo número (decrescente) e remove as duplicatas da tupla
+        sorted_chapters.sort(key=lambda x: x[0], reverse=True)
         return [c[1] for c in sorted_chapters]
 
     def get_chapter_images(self, chapter_url):

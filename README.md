@@ -56,6 +56,7 @@ Baixe capítulos diretamente dos principais sites de leitura:
 | [Elftoon](https://elftoon.com) | ✅ |
 | [Comikey](https://comikey.com) | ✅ |
 | [EzManga](https://ezmanga.org) | ✅ |
+| [Nyx Scans](https://nyxscans.com) | ✅ |
 
 </td>
 <td valign="top">
@@ -81,15 +82,13 @@ Baixe capítulos diretamente dos principais sites de leitura:
 | [Tiraninha](https://tiraninha.world) | ✅ |
 | [OneReader](https://onereader.net) | ✅ |
 | [Blackout Comics](https://blackoutcomics.com) | ✅ |
-| [Erosect](https://erosect.xyz) | ✅ |
 | [AniArgos](https://aniargos.com) | ✅ |
 | [TiaManhwa](https://tiamanhwa.com) | ✅ |
 | [MangaLivre.blog](https://mangalivre.blog) | ✅ |
 | [Fenix Project](https://fenixproject.site) | ✅ |
 | [Acervo Eremita](https://acervoeremita.com) | ✅ |
 | [Império da Britannia](https://imperiodabritannia.net) | ✅ |
-| [Nyx Scans](https://nyxscans.com) | ✅ |
-| [NoxToons](https://noxtoons.com) | ✅ |
+| [NoxMangas](https://noxmangas.org) | ✅ |
 
 </td>
 </tr>
@@ -112,6 +111,8 @@ Baixe capítulos diretamente dos principais sites de leitura:
 |---|---|
 | [Piccoma](https://piccoma.com) | ✅ *(login)* |
 | [Comic-Walker (Kadocomi)](https://comic-walker.com) | ✅ |
+| [Sen Manga](https://raw.senmanga.com) | ✅ |
+| [TakeComic](https://takecomic.jp) | ✅ *(login)* |
 
 </td>
 </tr>

@@ -38,12 +38,17 @@ class GeassComicsScraper(BaseScraper):
                 
             import re
             # Extrai hrefs de capítulos do HTML renderizado pelo Next.js
-            # Ex: \"href\":\"/read/criador-de-lendas-urbanas/1\"
             chapters_paths = re.findall(r'\\"href\\":\\"(/read/[^/]+/[0-9.]+)\\"', html)
             
             if not chapters_paths:
+                chapters_paths = re.findall(r'href="(/read/[^"]+)"', html)
+                
+            if not chapters_paths:
                 # Fallback, tenta procurar por /obra/ caso mude
                 chapters_paths = re.findall(r'\\"href\\":\\"(/obra/[^/]+/[0-9.]+)\\"', html)
+                
+            if not chapters_paths:
+                chapters_paths = re.findall(r'href="(/obra/[^"]+/(?:chapter|capitulo|ler)?[^"]+)"', html)
                 
             if not chapters_paths:
                 logger.warning(f"[{self.name}] Nenhum capítulo encontrado.")
@@ -82,6 +87,8 @@ class GeassComicsScraper(BaseScraper):
             
             # Extrai o array JSON de páginas injetado no HTML
             m = re.search(r'\\"pages\\":(\[.*?\])', html)
+            if not m:
+                m = re.search(r'"pages":(\[.*?\])', html)
             if not m:
                 raise Exception("Não foi possível encontrar as imagens na página do capítulo.")
                 

@@ -32,7 +32,7 @@ class ImperioDaBritanniaScraper(BaseScraper):
                 
             scroll_attempts = 0
             
-            while scroll_attempts < 30:  # Limite máximo de cliques
+            while scroll_attempts < 100:  # Limite máximo de cliques aumentado para obras muito longas
                 try:
                     chaps = page.evaluate("Array.from(document.querySelectorAll('a')).map(a => a.href).filter(h => h.includes('capitulo') || h.includes('chapter'))")
                     chapters.update(chaps)
@@ -78,7 +78,7 @@ class ImperioDaBritanniaScraper(BaseScraper):
             else:
                 sorted_chapters.append((0.0, url))
                 
-        sorted_chapters.sort(key=lambda x: x[0])
+        sorted_chapters.sort(key=lambda x: x[0], reverse=True)
         return [c[1] for c in sorted_chapters]
 
     def get_chapter_images(self, chapter_url):
