@@ -864,7 +864,9 @@ class GuiStitchProcess:
                     ext = os.path.splitext(fname)[1].lower()
                     if ext in ('.psd', '.psb'):
                         psd_path = os.path.join(wd.input_path, fname)
-                        console_func(f"Waifu-only: convertendo {fname} para {snap.export_format}...\n")
+                        target_ext = snap.output_type.lower() if snap.output_type.startswith('.') else f".{snap.output_type.lower()}"
+                        fmt = "JPEG" if target_ext in ('.jpg', '.jpeg') else target_ext.lstrip('.').upper()
+                        console_func(f"Waifu-only: convertendo {fname} para {target_ext}...\n")
                         try:
                             psd = PSDImage.open(psd_path)
                             img = psd.topil()
@@ -873,15 +875,14 @@ class GuiStitchProcess:
                             if img:
                                 if img.mode not in ("RGB", "RGBA"):
                                     img = img.convert("RGB")
-                                target_ext = f".{snap.export_format.lower()}"
                                 if target_ext in ('.jpg', '.jpeg') and img.mode == 'RGBA':
                                     bg = pil.new("RGB", img.size, (255, 255, 255))
                                     bg.paste(img, mask=img.split()[3])
                                     img = bg
                                 out_fname = os.path.splitext(fname)[0] + target_ext
                                 out_path = os.path.join(wd.input_path, out_fname)
-                                img.save(out_path, format=snap.export_format)
-                                # Opcional: Console log avisando sucesso
+                                img.save(out_path, format=fmt)
+                                console_func(f"Waifu-only: {fname} convertido para {out_fname} com sucesso.\n")
                         except Exception as e:
                             console_func(f"Erro ao converter {fname}: {e}\n")
             except ImportError:
