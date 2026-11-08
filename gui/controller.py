@@ -946,6 +946,7 @@ def _remove_context_menu() -> None:
 
 def _update_progress(percentage: int, message: str) -> None:
     _main_window.statusField.setText(message)
+    _main_window.statusField.setToolTip(message)
     _main_window.statusProgressBar.setValue(percentage)
 
 

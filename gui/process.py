@@ -793,6 +793,7 @@ class GuiStitchProcess:
                     success=False,
                     error=str(exc),
                 )
+                console_func(f"Erro no processamento [{idx}/{total}]: {exc}\n")
                 status_func(int(pct), f"Working - [{idx}/{total}] Failed: {exc}")
                 raise
 
@@ -896,6 +897,7 @@ class GuiStitchProcess:
                     console_func=console_func,
                 )
             except Exception as exc:
+                console_func(f"Erro no Waifu-only [{idx}/{total}]: {exc}\n")
                 status_func(pct, f"Waifu-only - [{idx}/{total}] Falhou: {exc}")
                 raise
 

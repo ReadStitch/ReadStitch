@@ -47,12 +47,13 @@ def main() -> None:
     # Exclude large optional dependencies that may exist in the local Python env.
     # ReadStitch does not require these to run, but PyInstaller can still pick
     # them up via transitive hooks when they're installed.
+    # NOTE: 'scipy' and 'aggdraw' must NOT be excluded because psd-tools requires them
+    # for rendering vector shapes and gradient fills during PSD compositing.
     exclude_modules = [
         "torch",
         "torchvision",
         "cv2",
         "opencv_python",
-        "scipy",
         "sklearn",
         "transformers",
         "tokenizers",
@@ -76,6 +77,9 @@ def main() -> None:
         "numpy",
         "PySide6",
         "psd_tools",
+        "aggdraw",
+        "scipy",
+        "scipy.interpolate",
         "natsort",
         "backports.tarfile",
         "pillow_avif",

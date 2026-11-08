@@ -17,6 +17,8 @@ numpy = "*"
 pyside6 = "*"
 pyqtdarktheme = "*"
 psd-tools = "*"
+aggdraw = "*"
+scipy = "*"
 requests = "*"
 undetected-chromedriver = "*"
 
