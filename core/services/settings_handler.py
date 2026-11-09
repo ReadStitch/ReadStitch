@@ -127,16 +127,23 @@ class SettingsHandler:
         """Loads settings profile pointers from a json file."""
         if not os.path.exists(self.settings_file):
             return self.save_all()
-        else:
-            with open(self.settings_file, "r") as f:
-                return AppProfiles(json.load(f))
+        try:
+            with open(self.settings_file, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            if not isinstance(data, dict):
+                return self.save_all()
+            return AppProfiles(data)
+        except (json.JSONDecodeError, OSError):
+            return self.save_all()
 
     def save_all(self, profiles: AppProfiles | None = None) -> AppProfiles:
         """Saves settings profile pointers from a json file."""
         if not os.path.exists(SETTINGS_REL_DIR):
-            os.makedirs(SETTINGS_REL_DIR)
+            os.makedirs(SETTINGS_REL_DIR, exist_ok=True)
         if not (profiles):
             profiles = AppProfiles()
-        with open(self.settings_file, "w") as f:
+        temp_file = f"{self.settings_file}.tmp"
+        with open(temp_file, "w", encoding="utf-8") as f:
             json.dump(vars(profiles), f, indent=2)
+        os.replace(temp_file, self.settings_file)
         return profiles

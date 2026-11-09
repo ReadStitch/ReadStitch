@@ -95,7 +95,7 @@ def main() -> None:
         "--clean",
         "--onedir",
         "--contents-directory",
-        ".",
+        "_internal",
         "--distpath",
         str(dist_dir),
         "--workpath",
