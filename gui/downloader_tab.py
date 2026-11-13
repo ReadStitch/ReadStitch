@@ -94,6 +94,14 @@ class DownloadThread(QThread):
                 import urllib.parse as urlparse
                 parsed = urlparse.urlparse(clean_url)
                 qs = urlparse.parse_qs(parsed.query)
+                # Manga Livre usa hífens nos capítulos fracionados.
+                if parsed.hostname == "mangalivre.blog":
+                    manga_match = re.search(
+                        r"/capitulo/[^/]*-capitulo-(\d+(?:[-.]\d+)*)/?$",
+                        parsed.path, re.IGNORECASE
+                    )
+                    if manga_match:
+                        qs["chapter"] = [manga_match.group(1).replace("-", ".")]
                 if 'chapter' in qs:
                     raw_chap_name = f"Capitulo {clean_num(qs['chapter'][0])}"
                 elif 'cap' in qs:
@@ -498,6 +506,14 @@ class DownloaderController(QObject):
             # Tenta pegar do parametro '?chapter=X' explicitamente
             parsed = urlparse.urlparse(clean_url)
             qs = urlparse.parse_qs(parsed.query)
+            # Manga Livre usa hífens nos capítulos fracionados.
+            if parsed.hostname == "mangalivre.blog":
+                manga_match = re.search(
+                    r"/capitulo/[^/]*-capitulo-(\d+(?:[-.]\d+)*)/?$",
+                    parsed.path, re.IGNORECASE
+                )
+                if manga_match:
+                    qs["chapter"] = [manga_match.group(1).replace("-", ".")]
             if 'chapter' in qs:
                 return f"Capítulo {clean_num(qs['chapter'][0])}"
             if 'cap' in qs:
