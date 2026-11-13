@@ -10,7 +10,10 @@ import urllib.error
 import urllib.request
 import webbrowser
 import zipfile
-import winreg
+try:
+    import winreg
+except ImportError:
+    winreg = None
 from typing import Any, Callable
 
 from PySide6.QtCore import QEvent, QObject, Qt, QThread, Signal, QTimer

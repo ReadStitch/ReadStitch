@@ -7,7 +7,10 @@ os.environ["PLAYWRIGHT_BROWSERS_PATH"] = _pw_path
 
 import multiprocessing
 import argparse
-import winreg
+try:
+    import winreg
+except ImportError:
+    winreg = None
 
 from core.services import SettingsHandler
 from gui.launcher import launch
@@ -60,6 +63,8 @@ def _has_any_watermark_enabled(settings: SettingsHandler) -> bool:
 
 
 def _refresh_context_menu_watermark_label(currently_enabled: bool) -> None:
+    if winreg is None:
+        return
     action_label = "Desativar Marcas d'agua" if currently_enabled else "Ativar Marcas d'agua"
     for base in _REG_BASE_KEYS:
         key_path = base + r"\shell\WatermarkToggle"
