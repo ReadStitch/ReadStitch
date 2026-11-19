@@ -1,4 +1,5 @@
 import urllib.request
+import urllib.error
 import json
 import logging
 from ..base_scraper import BaseScraper
@@ -6,27 +7,26 @@ from ..base_scraper import BaseScraper
 logger = logging.getLogger(__name__)
 
 class MediocreScraper(BaseScraper):
-    """Scraper para o site MediocreToons (requer login)."""
+    """Scraper para o site MediocreToons / LaranjaToons (requer login)."""
     
     @property
     def name(self):
-        return "MediocreToons"
+        return "LaranjaToons"
 
     def __init__(self):
         super().__init__()
-        self.base_url = "https://mediocrescan.com"
-        self.api_url = "https://back2.mediocrescan.com"
-        self.cdn_url = "https://cdn.mediocrescan.com"
+        self.base_url = "https://laranjatoons.com"
+        self.api_url = "https://api.laranjatoons.com"
+        self.cdn_url = "https://cdn.laranjatoons.com"
         self.headers.update({
             'Accept': 'application/json',
             'Referer': f"{self.base_url}/",
             'Origin': self.base_url,
-            'x-app-key': 'toons-mediocre-app'
         })
         self.token = None
 
     def login(self, email, password):
-        """Autentica na API da MediocreToons e salva o token."""
+        """Autentica na API da LaranjaToons e salva o token."""
         logger.info(f"[{self.name}] Tentando login com {email}")
         try:
             url = f"{self.api_url}/auth/login"
@@ -43,7 +43,12 @@ class MediocreScraper(BaseScraper):
             with urllib.request.urlopen(req) as response:
                 resp_data = json.loads(response.read().decode('utf-8'))
                 
-                token = resp_data.get('access_token') or resp_data.get('token')
+                token = (
+                    resp_data.get('access_token')
+                    or resp_data.get('token')
+                    or (resp_data.get('data') or {}).get('access_token')
+                    or (resp_data.get('data') or {}).get('token')
+                )
                 
                 if not token:
                     raise Exception("Token não retornado pela API")
@@ -59,18 +64,18 @@ class MediocreScraper(BaseScraper):
             if e.code == 401 or e.code == 400:
                 raise Exception("Falha de autenticação: E-mail ou Senha inválidos.")
             elif e.code in (502, 503, 521, 522):
-                raise Exception("O site MediocreToons está em manutenção ou fora do ar no momento. Tente novamente mais tarde.")
-            raise Exception(f"Erro ao conectar com MediocreToons (HTTP {e.code}).")
+                raise Exception(f"O site {self.name} está em manutenção ou fora do ar no momento. Tente novamente mais tarde.")
+            raise Exception(f"Erro ao conectar com {self.name} (HTTP {e.code}).")
         except Exception as e:
             logger.error(f"[{self.name}] Falha no login Exception: {e}")
-            raise Exception(f"Erro inesperado ao conectar com MediocreToons: {e}")
+            raise Exception(f"Erro inesperado ao conectar com {self.name}: {e}")
 
     def has_active_login(self):
         return self.token is not None
 
     def _fetch_api(self, url):
         if not self.has_active_login():
-            raise Exception("A MediocreToons requer login obrigatório. Faça login no aplicativo primeiro.")
+            raise Exception(f"A {self.name} requer login obrigatório. Faça login no aplicativo primeiro.")
             
         req = urllib.request.Request(url, headers=self.headers)
         try:
@@ -97,7 +102,7 @@ class MediocreScraper(BaseScraper):
                 password = settings.load("mediocre_password")
                 
                 if not email or not password:
-                    raise Exception("Credenciais não configuradas. Preencha o E-mail e Senha no painel 'Credenciais de Acesso' .")
+                    raise Exception("Credenciais não configuradas. Preencha o E-mail e Senha no painel 'Credenciais de Acesso'.")
                     
                 self.login(email, password)
             except Exception as e:
@@ -109,11 +114,20 @@ class MediocreScraper(BaseScraper):
         try:
             obra_id = None
             if 'obra' in parts:
-                obra_id = parts[parts.index('obra') + 1]
+                idx = parts.index('obra')
+                if idx + 1 < len(parts):
+                    cand = parts[idx + 1].split('-')[0]
+                    if cand.isdigit():
+                        obra_id = cand
             elif 'obras' in parts:
-                obra_id = parts[parts.index('obras') + 1]
-            else:
-                nums = [p for p in parts if p.isdigit()]
+                idx = parts.index('obras')
+                if idx + 1 < len(parts):
+                    cand = parts[idx + 1].split('-')[0]
+                    if cand.isdigit():
+                        obra_id = cand
+            
+            if not obra_id:
+                nums = [p.split('-')[0] for p in parts if p.split('-')[0].isdigit()]
                 if nums:
                     obra_id = nums[0]
                 else:
@@ -121,8 +135,13 @@ class MediocreScraper(BaseScraper):
             
             details_url = f"{self.api_url}/obras/{obra_id}"
             details_data = self._fetch_api(details_url)
-            
-            chapters_data = details_data.get('capitulos', [])
+
+            data_obj = details_data
+            if isinstance(details_data, dict):
+                if 'data' in details_data and isinstance(details_data['data'], dict) and 'capitulos' in details_data['data']:
+                    data_obj = details_data['data']
+
+            chapters_data = data_obj.get('capitulos', [])
             
             if not chapters_data:
                 logger.warning(f"[{self.name}] Nenhum capítulo encontrado.")
@@ -130,8 +149,8 @@ class MediocreScraper(BaseScraper):
                 
             all_chapters = []
             for item in chapters_data:
-                chap_id = item.get('cap_id')
-                chap_num = item.get('cap_num')
+                chap_id = item.get('cap_id') or item.get('id')
+                chap_num = item.get('cap_num') or item.get('numero')
                 url = f"{self.base_url}/obra/{obra_id}/capitulo/{chap_num}#chapterId={chap_id}"
                 all_chapters.append(url)
                 
@@ -153,7 +172,7 @@ class MediocreScraper(BaseScraper):
                 password = settings.load("mediocre_password")
                 
                 if not email or not password:
-                    raise Exception("Credenciais não configuradas. Preencha o E-mail e Senha no painel 'Credenciais de Acesso' .")
+                    raise Exception("Credenciais não configuradas. Preencha o E-mail e Senha no painel 'Credenciais de Acesso'.")
                     
                 self.login(email, password)
             except Exception as e:
@@ -161,31 +180,75 @@ class MediocreScraper(BaseScraper):
                 raise Exception(f"Erro de login: {e}")
 
         try:
-            if '#chapterId=' not in chapter_url:
-                raise Exception("Chapter ID ausente na URL")
+            chapter_id = None
+            if '#chapterId=' in chapter_url:
+                fragment = chapter_url.split('#chapterId=')[1]
+                chapter_id = fragment.split('&')[0].split('/')[0]
+            elif '/capitulo/' in chapter_url:
+                parts = [p for p in chapter_url.split('?')[0].split('#')[0].split('/') if p]
+                if 'capitulo' in parts:
+                    idx = parts.index('capitulo')
+                    if idx + 1 < len(parts) and parts[idx + 1].isdigit():
+                        chapter_id = parts[idx + 1]
+            if not chapter_id:
+                nums = [p for p in chapter_url.split('?')[0].split('#')[0].split('/') if p.isdigit()]
+                if nums:
+                    chapter_id = nums[-1]
+                else:
+                    raise Exception("Chapter ID ausente na URL")
                 
-            chapter_id = chapter_url.split('#chapterId=')[1]
-            
             api_chap_url = f"{self.api_url}/capitulos/{chapter_id}"
             chap_data = self._fetch_api(api_chap_url)
             
-            # Mediocretoons serves chapter pages via a CDN JSON file
-            obra_id = chap_data.get('obra', {}).get('id')
-            cap_num = chap_data.get('cap_num')
-            cap_uuid = chap_data.get('cap_uuid')
+            data = chap_data
+            if isinstance(chap_data, dict) and 'data' in chap_data and isinstance(chap_data['data'], dict):
+                data = chap_data['data']
+
+            obra_id = (data.get('obra') or {}).get('id') or data.get('obr_id') or data.get('obra_id') or data.get('obraId')
+            cap_num = data.get('cap_num') or data.get('numero')
+            cap_uuid = data.get('cap_uuid') or data.get('uuid')
             
-            if not all([obra_id, cap_num, cap_uuid]):
-                raise Exception("Metadados do capítulo incompletos na API.")
+            if not cap_uuid:
+                raise Exception("Metadados do capítulo incompletos na API (uuid ausente).")
                 
-            cdn_json_url = f"{self.cdn_url}/obras/{obra_id}/capitulos/{cap_num}/{cap_uuid}.json"
+            # URLs candidatas do JSON no CDN
+            cdn_candidates = []
+            if obra_id is not None and cap_num is not None:
+                cdn_candidates.append(f"{self.cdn_url}/obras/{obra_id}/capitulos/{cap_num}/{cap_uuid}.json")
+            cdn_candidates.append(f"{self.cdn_url}/capitulos/{cap_uuid}.json")
             
-            pages_data = self._fetch_api(cdn_json_url)
+            pages_data = None
+            last_err = None
+            for cdn_url in cdn_candidates:
+                try:
+                    req = urllib.request.Request(
+                        cdn_url,
+                        headers={
+                            'User-Agent': self.headers.get('User-Agent', 'Mozilla/5.0'),
+                            'Referer': f"{self.base_url}/",
+                            'Origin': self.base_url
+                        }
+                    )
+                    with urllib.request.urlopen(req) as resp:
+                        pages_data = json.loads(resp.read().decode('utf-8', errors='ignore'))
+                    if pages_data:
+                        break
+                except Exception as err:
+                    last_err = err
+                    continue
+
             if not pages_data:
-                raise Exception("O capítulo não possui imagens acessíveis")
+                raise Exception(f"O capítulo não possui imagens acessíveis: {last_err or 'vazio'}")
                 
             images = []
             for p in pages_data:
-                img_url = p.get('url') or p.get('src')
+                if isinstance(p, dict):
+                    img_url = p.get('url') or p.get('src')
+                elif isinstance(p, str):
+                    img_url = p
+                else:
+                    img_url = None
+
                 if img_url:
                     if img_url.startswith('http'):
                         images.append(img_url)
@@ -198,5 +261,3 @@ class MediocreScraper(BaseScraper):
         except Exception as e:
             logger.error(f"[{self.name}] Falha ao obter imagens: {e}")
             raise Exception(f"Falha ao obter imagens do capítulo: {e}")
-
-

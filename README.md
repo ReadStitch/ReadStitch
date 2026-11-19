@@ -41,7 +41,7 @@ Baixe capítulos diretamente dos principais sites de leitura:
 
 | Site | Suporte |
 |---|---|
-| [Asura Scans](https://asuracomic.net) | ✅ |
+| [Asura Scans](https://asurascans.com) | ✅ |
 | [Webtoon (LINE)](https://www.webtoons.com) | ✅ |
 | [QisManga](https://qismanga.com) | ✅ |
 | [Comix](https://comix.jp) | ✅ |
@@ -66,7 +66,7 @@ Baixe capítulos diretamente dos principais sites de leitura:
 | Site | Suporte |
 |---|---|
 | [Verdinha](https://reaperscans.com.br) | ✅ *(login)* |
-| [Mediocretoons](https://mediocrescan.com) | ✅ *(login)* |
+| [LaranjaToons (Mediocretoons)](https://laranjatoons.com) | ✅ *(login)* |
 | [Capitoons](https://capitoons.com) | ✅ |
 | [Pluma Comics](https://plumacomics.com) | ✅ |
 | [Geass Comics](https://geasscomics.com) | ✅ |

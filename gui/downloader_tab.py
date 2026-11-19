@@ -278,7 +278,7 @@ class DownloaderController(QObject):
             site = "Piccoma"
         elif "verdinha" in url_lower or "reaperscans" in url_lower or "greenscans" in url_lower:
             site = "Verdinha"
-        elif "mediocre" in url_lower or "mediocrescan" in url_lower:
+        elif "mediocre" in url_lower or "mediocrescan" in url_lower or "laranjatoons" in url_lower:
             site = "Mediocretoons"
         elif "empreguetes" in url_lower:
             site = "Empreguetes"
@@ -292,6 +292,8 @@ class DownloaderController(QObject):
             site = "TakeComic"
         elif "kakao.com" in url_lower:
             site = "KakaoPage"
+        elif "asura" in url_lower:
+            site = "Asura Scans"
         else:
             site = None
 

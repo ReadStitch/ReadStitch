@@ -112,7 +112,7 @@ def get_scraper_for_url(url):
         return HipercoolScraper()
     elif 'verdinha.wtf' in url_lower or 'verdinha' in url_lower:
         return VerdinhaScraper()
-    elif 'mediocrescan.com' in url_lower or 'mediocre' in url_lower:
+    elif 'mediocrescan.com' in url_lower or 'mediocre' in url_lower or 'laranjatoons.com' in url_lower or 'laranjatoons' in url_lower:
         return MediocreScraper()
     elif 'empreguetes.wtf' in url_lower or 'empreguetes' in url_lower:
         return EmpreguetesScraper()
@@ -162,5 +162,7 @@ def get_scraper_for_url(url):
         return OmegaScansScraper()
     elif 'toongod.org' in url_lower or 'toongod' in url_lower:
         return ToonGodScraper()
+    elif 'asurascans.com' in url_lower or 'asuracomic.net' in url_lower or 'asuracomics.com' in url_lower or 'asura' in url_lower:
+        return AsuraScraper()
     # Default to Asura
     return AsuraScraper()
