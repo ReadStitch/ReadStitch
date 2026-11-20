@@ -14,7 +14,7 @@ permissions:
 
 jobs:
   build-and-package:
-    runs-on: windows-latest
+    runs-on: windows-2022
 
     steps:
       - name: Checkout Repository
@@ -44,7 +44,7 @@ jobs:
           git submodule update --init --recursive --depth 1
 
           # O CMakeLists.txt fica dentro da pasta 'src' (-S src)
-          cmake -B build -S src -G "Visual Studio 17 2022" -A x64 `
+          cmake -B build -S src -A x64 `
             -DUSE_SYSTEM_NCNN=OFF `
             -DNCNN_VULKAN=OFF `
             -DNCNN_BUILD_EXAMPLES=OFF `
