@@ -20,12 +20,6 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Install Vulkan SDK
-        uses: humbletim/install-vulkan-sdk@v1.1.1
-        with:
-          version: latest
-          cache: true
-
       - name: Download Official waifu2x-ncnn-vulkan
         shell: pwsh
         run: |
