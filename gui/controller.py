@@ -62,23 +62,33 @@ WAIFU_EXE_PATH = os.path.join(WAIFU_INSTALL_DIR, "waifu2x-ncnn-vulkan.exe")
 WAIFU_EXE_CPU_PATH = os.path.join(WAIFU_INSTALL_DIR, "waifu2x-ncnn-cpu.exe")
 WAIFU_ARGS_JPG = "-i [stitched] -o [processed] -n 3 -s 1 -f jpg"
 WAIFU_ARGS_WEBP = "-i [stitched] -o [processed] -n 3 -s 1 -f webp"
+_WAIFU_CPU_SCRIPT = os.path.join(_PROJECT_ROOT, "scripts", "waifu2x_cpu.py")
 
 
-def get_waifu_executable(*, prefer_cpu: bool = False) -> str:
-    """Return the most suitable Waifu2X executable path based on hardware support and availability."""
+def get_waifu_command(*, prefer_cpu: bool = False) -> tuple[str, str]:
+    """Return (app, default_args) optimal for current system."""
     from core.utils.vulkan_check import is_vulkan_supported
 
     vulkan_supported, _ = is_vulkan_supported()
     has_vulkan = os.path.isfile(WAIFU_EXE_PATH)
     has_cpu = os.path.isfile(WAIFU_EXE_CPU_PATH)
 
-    if prefer_cpu and has_cpu:
-        return WAIFU_EXE_CPU_PATH
-    if vulkan_supported and has_vulkan:
-        return WAIFU_EXE_PATH
+    if not prefer_cpu and vulkan_supported and has_vulkan:
+        return WAIFU_EXE_PATH, WAIFU_ARGS_JPG
+
     if has_cpu:
-        return WAIFU_EXE_CPU_PATH
-    return WAIFU_EXE_PATH
+        return WAIFU_EXE_CPU_PATH, WAIFU_ARGS_JPG
+
+    # Fallback to Python ONNX CPU engine
+    py_app = sys.executable or "python"
+    py_args = f'"{_WAIFU_CPU_SCRIPT}" -i [stitched] -o [processed] -n 3 -s 1 -f jpg'
+    return py_app, py_args
+
+
+def get_waifu_executable(*, prefer_cpu: bool = False) -> str:
+    """Return the most suitable Waifu2X executable path based on hardware support and availability."""
+    app, _ = get_waifu_command(prefer_cpu=prefer_cpu)
+    return app
 APP_NAME = "ReadStitch"
 APP_VERSION = _load_app_version()
 GITHUB_REPO = "ReadStitch/ReadStitch"
@@ -204,8 +214,9 @@ def initialize_gui(
         raise RuntimeError(f"QUiLoader failed to load layout.ui. Error: {loader.errorString()}")
     _settings = SettingsHandler()
 
-    _settings.save("postprocess_app", get_waifu_executable())
-    _settings.save("postprocess_args", WAIFU_ARGS_JPG)
+    default_app, default_args = get_waifu_command()
+    _settings.save("postprocess_app", default_app)
+    _settings.save("postprocess_args", default_args)
 
     _main_window.setWindowIcon(QIcon(_ICON_FILE))
     _main_window.setWindowTitle(f"{APP_NAME} v{APP_VERSION}")
@@ -798,7 +809,9 @@ def _download_and_extract_waifu2x(*, repair: bool) -> None:
             f"Nenhum executável do Waifu2X encontrado em: {WAIFU_INSTALL_DIR}"
         )
 
-    _settings.save("postprocess_app", get_waifu_executable())
+    app, args = get_waifu_command()
+    _settings.save("postprocess_app", app)
+    _settings.save("postprocess_args", args)
 
 
 def _waifu2x_action(*, repair: bool) -> None:

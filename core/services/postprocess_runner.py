@@ -107,9 +107,33 @@ class PostProcessRunner:
         return_code = proc.wait()
         if return_code:
             # Check if upscaler failed due to Vulkan/GPU driver issues (often exit code 3221225477 or 4294967295)
-            # If so, try falling back to CPU executable if available, or '-g -1' mode.
+            # If so, try falling back to CPU engine (ONNX Runtime) or CPU executable.
             is_upscaler = any(any(x in part.lower() for x in ["waifu2x", "realesrgan", "esrgan"]) for part in command)
             if is_upscaler:
+                project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+                cpu_script = os.path.join(project_root, "scripts", "waifu2x_cpu.py")
+
+                if os.path.isfile(cpu_script) and "waifu2x_cpu.py" not in " ".join(command):
+                    console_func(
+                        f"\n[Aviso] Falha de GPU/Vulkan detectada (código {return_code}). "
+                        "Alternando automaticamente para o motor CPU nativo (ONNX Runtime)...\n"
+                    )
+                    clean_args: list[str] = []
+                    skip_next = False
+                    for arg in command[1:]:
+                        if skip_next:
+                            skip_next = False
+                            continue
+                        if arg in ("-g", "-j"):
+                            skip_next = True
+                            continue
+                        if arg.startswith(("-g", "-j")):
+                            continue
+                        clean_args.append(arg)
+
+                    cpu_command = [sys.executable or "python", cpu_script, *clean_args]
+                    return self._execute(processed_path, cpu_command, console_func)
+
                 exe_path = command[0]
                 dir_name = os.path.dirname(exe_path)
                 cpu_exe_name = "waifu2x-ncnn-cpu.exe"
@@ -120,7 +144,7 @@ class PostProcessRunner:
                         f"\n[Aviso] Falha de GPU/Vulkan detectada (código {return_code}). "
                         f"Alternando automaticamente para o executável CPU ({cpu_exe_name})...\n"
                     )
-                    clean_args: list[str] = []
+                    clean_args = []
                     skip_next = False
                     for arg in command[1:]:
                         if skip_next:
