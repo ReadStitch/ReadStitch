@@ -10,7 +10,10 @@ import urllib.error
 import urllib.request
 import webbrowser
 import zipfile
-import winreg
+try:
+    import winreg
+except ImportError:
+    winreg = None
 from typing import Any, Callable
 
 from PySide6.QtCore import QEvent, QObject, Qt, QThread, Signal, QTimer
@@ -891,6 +894,13 @@ def _build_context_command(
 
 
 def _install_context_menu() -> None:
+    if winreg is None:
+        QMessageBox.information(
+            _main_window,
+            "Menu de Contexto",
+            "A integração com o menu de contexto só está disponível no Windows.",
+        )
+        return
     try:
         icon_val: str | None = None
         if _is_frozen():
@@ -964,6 +974,8 @@ def _delete_reg_tree(root: int, sub_key: str) -> None:
 
 
 def _remove_context_menu() -> None:
+    if winreg is None:
+        return
     try:
         for key in (*_REG_BASE_KEYS, *_LEGACY_REG_BASE_KEYS):
             _delete_reg_tree(winreg.HKEY_CURRENT_USER, key)
