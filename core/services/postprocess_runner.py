@@ -107,31 +107,40 @@ class PostProcessRunner:
         return_code = proc.wait()
         if return_code:
             # Check if upscaler failed due to Vulkan/GPU driver issues (often exit code 3221225477 or 4294967295)
-            # If so, try falling back to CPU mode using '-g -1' if not already specified.
+            # If so, try falling back to CPU executable if available, or '-g -1' mode.
             is_upscaler = any(any(x in part.lower() for x in ["waifu2x", "realesrgan", "esrgan"]) for part in command)
-            has_cpu_flag = "-g" in command or any(part.startswith("-g") for part in command)
-            
-            if is_upscaler and not has_cpu_flag:
-                console_func("\n[Aviso] Falha de GPU/Vulkan detectada (código {}). Tentando novamente em modo CPU...\n".format(return_code))
-                cpu_command = list(command)
-                cpu_command.extend(["-g", "-1"])
-                proc_cpu = subprocess.Popen(
-                    cpu_command,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.STDOUT,
-                    encoding="utf-8",
-                    errors="replace",
-                    universal_newlines=True,
-                    shell=False,
-                    **_build_popen_kwargs(),
-                )
-                stdout_pipe_cpu = proc_cpu.stdout
-                if stdout_pipe_cpu is not None:
-                    for line in stdout_pipe_cpu:
-                        console_func(line)
-                    stdout_pipe_cpu.close()
-                return_code_cpu = proc_cpu.wait()
-                if not return_code_cpu:
-                    console_func("\nPost process finished successfully using CPU!\n")
-                    return
+            if is_upscaler:
+                exe_path = command[0]
+                dir_name = os.path.dirname(exe_path)
+                cpu_exe_name = "waifu2x-ncnn-cpu.exe"
+                cpu_exe_path = os.path.join(dir_name, cpu_exe_name) if dir_name else shutil.which(cpu_exe_name)
+
+                if "vulkan" in os.path.basename(exe_path).lower() and cpu_exe_path and os.path.isfile(cpu_exe_path):
+                    console_func(
+                        f"\n[Aviso] Falha de GPU/Vulkan detectada (código {return_code}). "
+                        f"Alternando automaticamente para o executável CPU ({cpu_exe_name})...\n"
+                    )
+                    clean_args: list[str] = []
+                    skip_next = False
+                    for arg in command[1:]:
+                        if skip_next:
+                            skip_next = False
+                            continue
+                        if arg == "-g":
+                            skip_next = True
+                            continue
+                        if arg.startswith("-g"):
+                            continue
+                        clean_args.append(arg)
+
+                    cpu_command = [cpu_exe_path, *clean_args]
+                    return self._execute(processed_path, cpu_command, console_func)
+
+                has_cpu_flag = "-g" in command or any(part.startswith("-g") for part in command)
+                if not has_cpu_flag:
+                    console_func(f"\n[Aviso] Falha de GPU/Vulkan detectada (código {return_code}). Tentando novamente em modo CPU (-g -1)...\n")
+                    cpu_command = list(command)
+                    cpu_command.extend(["-g", "-1"])
+                    return self._execute(processed_path, cpu_command, console_func)
+
             raise subprocess.CalledProcessError(return_code, command)

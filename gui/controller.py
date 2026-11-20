@@ -59,8 +59,26 @@ WAIFU_ZIP_URL = (
 )
 WAIFU_INSTALL_DIR = "C:/Manhwa/Waifu2X"
 WAIFU_EXE_PATH = os.path.join(WAIFU_INSTALL_DIR, "waifu2x-ncnn-vulkan.exe")
+WAIFU_EXE_CPU_PATH = os.path.join(WAIFU_INSTALL_DIR, "waifu2x-ncnn-cpu.exe")
 WAIFU_ARGS_JPG = "-i [stitched] -o [processed] -n 3 -s 1 -f jpg"
 WAIFU_ARGS_WEBP = "-i [stitched] -o [processed] -n 3 -s 1 -f webp"
+
+
+def get_waifu_executable(*, prefer_cpu: bool = False) -> str:
+    """Return the most suitable Waifu2X executable path based on hardware support and availability."""
+    from core.utils.vulkan_check import is_vulkan_supported
+
+    vulkan_supported, _ = is_vulkan_supported()
+    has_vulkan = os.path.isfile(WAIFU_EXE_PATH)
+    has_cpu = os.path.isfile(WAIFU_EXE_CPU_PATH)
+
+    if prefer_cpu and has_cpu:
+        return WAIFU_EXE_CPU_PATH
+    if vulkan_supported and has_vulkan:
+        return WAIFU_EXE_PATH
+    if has_cpu:
+        return WAIFU_EXE_CPU_PATH
+    return WAIFU_EXE_PATH
 APP_NAME = "ReadStitch"
 APP_VERSION = _load_app_version()
 GITHUB_REPO = "ReadStitch/ReadStitch"
@@ -186,7 +204,7 @@ def initialize_gui(
         raise RuntimeError(f"QUiLoader failed to load layout.ui. Error: {loader.errorString()}")
     _settings = SettingsHandler()
 
-    _settings.save("postprocess_app", WAIFU_EXE_PATH)
+    _settings.save("postprocess_app", get_waifu_executable())
     _settings.save("postprocess_args", WAIFU_ARGS_JPG)
 
     _main_window.setWindowIcon(QIcon(_ICON_FILE))
@@ -773,10 +791,14 @@ def _download_and_extract_waifu2x(*, repair: bool) -> None:
     finally:
         shutil.rmtree(tmp_dir, ignore_errors=True)
 
-    if not os.path.isfile(WAIFU_EXE_PATH):
-        raise FileNotFoundError(f"Waifu2X exe not found at: {WAIFU_EXE_PATH}")
+    has_vulkan = os.path.isfile(WAIFU_EXE_PATH)
+    has_cpu = os.path.isfile(WAIFU_EXE_CPU_PATH)
+    if not has_vulkan and not has_cpu:
+        raise FileNotFoundError(
+            f"Nenhum executável do Waifu2X encontrado em: {WAIFU_INSTALL_DIR}"
+        )
 
-    _settings.save("postprocess_app", WAIFU_EXE_PATH)
+    _settings.save("postprocess_app", get_waifu_executable())
 
 
 def _waifu2x_action(*, repair: bool) -> None:
