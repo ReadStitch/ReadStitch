@@ -13,6 +13,8 @@ def _find_executable(app: str) -> str | None:
     """Find executable path, returns None if not found."""
     if not app:
         return None
+    if app.startswith("internal:"):
+        return app
     # Check if it's an absolute path that exists
     if os.path.isabs(app) and os.path.isfile(app):
         return app
@@ -48,6 +50,19 @@ class PostProcessRunner:
         if not postprocess_app:
             raise ValueError("Post process application is required but not configured.")
 
+        # If configured for the internal CPU engine or pointing to waifu2x_cpu, run in-process directly
+        if (
+            postprocess_app.startswith("internal:")
+            or "waifu2x_cpu" in postprocess_app.lower()
+            or "waifu2x_cpu" in postprocess_args.lower()
+        ):
+            return self._run_internal_waifu(
+                input_path=workdirectory.output_path,
+                output_path=workdirectory.postprocess_path,
+                postprocess_args=postprocess_args,
+                console_func=console_func,
+            )
+
         # Validate executable exists before attempting to run
         executable_path = _find_executable(postprocess_app)
         if executable_path is None:
@@ -76,6 +91,38 @@ class PostProcessRunner:
         console_func(f"Executing post process: {' '.join(command)}\n")
 
         return self._execute(workdirectory.postprocess_path, command, console_func)
+
+    def _run_internal_waifu(
+        self,
+        input_path: str,
+        output_path: str,
+        postprocess_args: str,
+        console_func: Callable[[str], None],
+    ) -> None:
+        """Run native ONNX Runtime CPU engine in-process without spawning subprocesses."""
+        console_func("\n[Waifu2X] Executando motor interno CPU (ONNX Runtime)...\n")
+        try:
+            from scripts.waifu2x_cpu import Waifu2xCpuEngine, ensure_model, process_path
+        except Exception as e:
+            console_func(f"[ERRO] Falha ao importar motor Waifu2X CPU: {e}\n")
+            raise
+
+        output_format = "jpg"
+        parts = postprocess_args.split()
+        for i, p in enumerate(parts):
+            if p in ("-f", "--format") and i + 1 < len(parts):
+                output_format = parts[i + 1]
+
+        model_path = ensure_model(log_func=console_func)
+        engine = Waifu2xCpuEngine(model_path)
+        process_path(
+            engine=engine,
+            input_path=input_path,
+            output_path=output_path,
+            output_format=output_format,
+            log_func=console_func,
+        )
+        console_func("Post process finished successfully!\n")
 
     @logFunc(inclass=True)
     def _execute(
@@ -110,30 +157,6 @@ class PostProcessRunner:
             # If so, try falling back to CPU engine (ONNX Runtime) or CPU executable.
             is_upscaler = any(any(x in part.lower() for x in ["waifu2x", "realesrgan", "esrgan"]) for part in command)
             if is_upscaler:
-                project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-                cpu_script = os.path.join(project_root, "scripts", "waifu2x_cpu.py")
-
-                if os.path.isfile(cpu_script) and "waifu2x_cpu.py" not in " ".join(command):
-                    console_func(
-                        f"\n[Aviso] Falha de GPU/Vulkan detectada (código {return_code}). "
-                        "Alternando automaticamente para o motor CPU nativo (ONNX Runtime)...\n"
-                    )
-                    clean_args: list[str] = []
-                    skip_next = False
-                    for arg in command[1:]:
-                        if skip_next:
-                            skip_next = False
-                            continue
-                        if arg in ("-g", "-j"):
-                            skip_next = True
-                            continue
-                        if arg.startswith(("-g", "-j")):
-                            continue
-                        clean_args.append(arg)
-
-                    cpu_command = [sys.executable or "python", cpu_script, *clean_args]
-                    return self._execute(processed_path, cpu_command, console_func)
-
                 exe_path = command[0]
                 dir_name = os.path.dirname(exe_path)
                 cpu_exe_name = "waifu2x-ncnn-cpu.exe"
@@ -160,11 +183,29 @@ class PostProcessRunner:
                     cpu_command = [cpu_exe_path, *clean_args]
                     return self._execute(processed_path, cpu_command, console_func)
 
-                has_cpu_flag = "-g" in command or any(part.startswith("-g") for part in command)
-                if not has_cpu_flag:
-                    console_func(f"\n[Aviso] Falha de GPU/Vulkan detectada (código {return_code}). Tentando novamente em modo CPU (-g -1)...\n")
-                    cpu_command = list(command)
-                    cpu_command.extend(["-g", "-1"])
-                    return self._execute(processed_path, cpu_command, console_func)
+                # Fallback to internal ONNX CPU engine
+                console_func(
+                    f"\n[Aviso] Falha de GPU/Vulkan detectada (código {return_code}). "
+                    "Alternando automaticamente para o motor CPU nativo (ONNX Runtime)...\n"
+                )
+                in_path = None
+                out_path = processed_path
+                for idx, c in enumerate(command):
+                    if c == "-i" and idx + 1 < len(command):
+                        in_path = command[idx + 1]
+                    elif c == "-o" and idx + 1 < len(command):
+                        out_path = command[idx + 1]
+
+                if in_path:
+                    fmt = "jpg"
+                    for idx, c in enumerate(command):
+                        if c in ("-f", "--format") and idx + 1 < len(command):
+                            fmt = command[idx + 1]
+                    return self._run_internal_waifu(
+                        input_path=in_path,
+                        output_path=out_path,
+                        postprocess_args=f"-f {fmt}",
+                        console_func=console_func,
+                    )
 
             raise subprocess.CalledProcessError(return_code, command)

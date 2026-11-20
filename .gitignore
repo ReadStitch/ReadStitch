@@ -8,7 +8,7 @@ __settings__/
 *.log
 *.spec
 
-Waifu2X/
+/Waifu2X/
 
 Waifu2X.zip
 .venv/

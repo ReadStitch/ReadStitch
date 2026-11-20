@@ -29,6 +29,7 @@ def main() -> None:
 
     icon_path = project_root / "assets" / "ReadStitchLogo.ico"
     ui_path = project_root / "gui" / "layout.ui"
+    models_path = project_root / "assets" / "models"
 
     dist_dir = project_root / "dist"
     app_name = "ReadStitch"
@@ -43,6 +44,8 @@ def main() -> None:
         add_data_args.extend(["--add-data", f"{icon_path};assets"])
     if ui_path.exists():
         add_data_args.extend(["--add-data", f"{ui_path};gui"])
+    if models_path.exists():
+        add_data_args.extend(["--add-data", f"{models_path};assets/models"])
 
     # Exclude large optional dependencies that may exist in the local Python env.
     # ReadStitch does not require these to run, but PyInstaller can still pick
@@ -60,7 +63,6 @@ def main() -> None:
         "sentencepiece",
         "fugashi",
         "manga_ocr",
-        "onnxruntime",
         "tensorflow",
         "jax",
         # Qt binding conflict: PySide6 is the only one we use
@@ -84,6 +86,7 @@ def main() -> None:
         "backports.tarfile",
         "pillow_avif",
         "requests",
+        "onnxruntime",
     ]
 
     args: list[str] = [
@@ -104,6 +107,8 @@ def main() -> None:
         str(work_dir),
         "--collect-data",
         "playwright_stealth",
+        "--collect-all",
+        "onnxruntime",
         # Optimization: bytecode optimization (removes assertions + docstrings, ~10% size reduction)
         "--optimize",
         "2",

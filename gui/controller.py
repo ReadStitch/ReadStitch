@@ -79,10 +79,8 @@ def get_waifu_command(*, prefer_cpu: bool = False) -> tuple[str, str]:
     if has_cpu:
         return WAIFU_EXE_CPU_PATH, WAIFU_ARGS_JPG
 
-    # Fallback to Python ONNX CPU engine
-    py_app = sys.executable or "python"
-    py_args = f'"{_WAIFU_CPU_SCRIPT}" -i [stitched] -o [processed] -n 3 -s 1 -f jpg'
-    return py_app, py_args
+    # Fallback to internal Python ONNX CPU engine
+    return "internal:waifu2x_cpu", WAIFU_ARGS_JPG
 
 
 def get_waifu_executable(*, prefer_cpu: bool = False) -> str:

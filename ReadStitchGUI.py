@@ -7,6 +7,7 @@ os.environ["PLAYWRIGHT_BROWSERS_PATH"] = _pw_path
 
 import multiprocessing
 import argparse
+import sys
 import winreg
 
 from core.services import SettingsHandler
@@ -77,6 +78,14 @@ def _refresh_context_menu_watermark_label(currently_enabled: bool) -> None:
 if __name__ == '__main__':
     # Required for multiprocessing on Windows
     multiprocessing.freeze_support()
+
+    # Intercept waifu2x_cpu invocations if called as Python replacement
+    for idx, arg in enumerate(sys.argv):
+        if "waifu2x_cpu" in arg:
+            from scripts.waifu2x_cpu import main as waifu_cpu_main
+            sys.argv = [sys.argv[0]] + sys.argv[idx + 1:]
+            waifu_cpu_main()
+            raise SystemExit(0)
 
     parser = argparse.ArgumentParser()
     parser.add_argument(

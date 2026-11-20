@@ -11,6 +11,7 @@ import os
 import sys
 import time
 import urllib.request
+from typing import Callable
 
 import numpy as np
 from PIL import Image
@@ -50,7 +51,7 @@ LOCAL_ASSET_DIR = os.path.join(
 )
 
 
-def ensure_model(model_path: str | None = None) -> str:
+def ensure_model(model_path: str | None = None, log_func: Callable[[str], None] = print) -> str:
     """Ensure ONNX model is available locally, downloading if necessary."""
     if model_path and os.path.isfile(model_path):
         return model_path
@@ -59,19 +60,32 @@ def ensure_model(model_path: str | None = None) -> str:
         os.path.join(DEFAULT_CACHE_DIR, "noise3.onnx"),
         os.path.join(LOCAL_ASSET_DIR, "noise3.onnx"),
     ]
+
+    # Support PyInstaller frozen bundles
+    if getattr(sys, "frozen", False):
+        exe_dir = os.path.dirname(sys.executable)
+        meipass = getattr(sys, "_MEIPASS", "")
+        candidates.extend([
+            os.path.join(meipass, "assets", "models", "waifu2x", "noise3.onnx"),
+            os.path.join(meipass, "models", "noise3.onnx"),
+            os.path.join(exe_dir, "assets", "models", "waifu2x", "noise3.onnx"),
+            os.path.join(exe_dir, "_internal", "assets", "models", "waifu2x", "noise3.onnx"),
+            os.path.join(exe_dir, "models", "noise3.onnx"),
+        ])
+
     for c in candidates:
-        if os.path.isfile(c) and os.path.getsize(c) > 1024 * 1024:
+        if c and os.path.isfile(c) and os.path.getsize(c) > 1024 * 1024:
             return c
 
     target = candidates[0]
     os.makedirs(os.path.dirname(target), exist_ok=True)
-    print(f"[Waifu2X-CPU] Baixando modelo Denoise (5 MB) para {target}...")
+    log_func(f"[Waifu2X-CPU] Baixando modelo Denoise (5 MB) para {target}...\n")
     try:
         urllib.request.urlretrieve(MODEL_URL_NOISE3, target)
-        print("[Waifu2X-CPU] Download concluído com sucesso!")
+        log_func("[Waifu2X-CPU] Download concluído com sucesso!\n")
         return target
     except Exception as e:
-        print(f"[ERRO] Falha ao baixar modelo ONNX: {e}", file=sys.stderr)
+        log_func(f"[ERRO] Falha ao baixar modelo ONNX: {e}\n")
         raise
 
 
@@ -136,7 +150,8 @@ def process_path(
     engine: Waifu2xCpuEngine,
     input_path: str,
     output_path: str,
-    output_format: str,
+    output_format: str = "jpg",
+    log_func: Callable[[str], None] = print,
 ) -> None:
     abs_in = os.path.abspath(input_path)
     abs_out = os.path.abspath(output_path)
@@ -157,30 +172,33 @@ def process_path(
                     dest_file = os.path.join(target_dir, f"{base}.{output_format.lower()}")
                     files_to_process.append((src_file, dest_file))
     else:
-        print(f"[ERRO] Entrada não encontrada: {input_path}", file=sys.stderr)
+        log_func(f"[ERRO] Entrada não encontrada: {input_path}\n")
         return
 
     total = len(files_to_process)
     if total == 0:
-        print("[Waifu2X-CPU] Nenhuma imagem encontrada para processar.")
+        log_func("[Waifu2X-CPU] Nenhuma imagem encontrada para processar.\n")
         return
 
-    print(f"[Waifu2X-CPU] Processando {total} imagem(ns) via CPU...")
+    log_func(f"[Waifu2X-CPU] Processando {total} imagem(ns) via CPU...\n")
     start_total = time.time()
 
     for idx, (src, dst) in enumerate(files_to_process, 1):
         t0 = time.time()
         filename = os.path.basename(src)
-        print(f"[{idx}/{total}] {filename}...", end=" ", flush=True)
 
         try:
             with Image.open(src) as img:
                 out_img = engine.process_image(img)
 
                 save_kwargs = {}
-                fmt_lower = output_format.lower()
+                fmt_lower = output_format.lower().lstrip(".")
                 if fmt_lower in ("jpg", "jpeg"):
                     if out_img.mode == "RGBA":
+                        bg = Image.new("RGB", out_img.size, (255, 255, 255))
+                        bg.paste(out_img, mask=out_img.split()[3])
+                        out_img = bg
+                    elif out_img.mode != "RGB":
                         out_img = out_img.convert("RGB")
                     save_kwargs["quality"] = 95
                 elif fmt_lower == "webp":
@@ -188,15 +206,15 @@ def process_path(
 
                 out_img.save(dst, **save_kwargs)
             elapsed = time.time() - t0
-            print(f"OK ({elapsed:.2f}s)")
+            log_func(f"[{idx}/{total}] {filename}... OK ({elapsed:.2f}s)\n")
         except Exception as e:
-            print(f"FALHA: {e}")
+            log_func(f"[{idx}/{total}] {filename}... FALHA: {e}\n")
 
     total_time = time.time() - start_total
-    print(f"[Waifu2X-CPU] Concluído! {total} imagem(ns) em {total_time:.2f}s.\n")
+    log_func(f"[Waifu2X-CPU] Concluído! {total} imagem(ns) em {total_time:.2f}s.\n")
 
 
-def parse_args():
+def parse_args(argv: list[str] | None = None):
     parser = argparse.ArgumentParser(description="Waifu2X CPU Denoise Engine")
     parser.add_argument("-i", "--input", required=True, help="Input directory or file")
     parser.add_argument("-o", "--output", required=True, help="Output directory or file")
@@ -208,16 +226,21 @@ def parse_args():
     # Allow extra ignored args for compatibility with waifu2x-ncnn-vulkan CLI
     parser.add_argument("-g", default=None, help="Ignored (for CLI compatibility)")
     parser.add_argument("-j", default=None, help="Ignored (for CLI compatibility)")
-    return parser.parse_args()
+    return parser.parse_args(argv)
 
 
-if __name__ == "__main__":
-    args = parse_args()
-    model_path = ensure_model(args.model)
+def main(argv: list[str] | None = None, log_func: Callable[[str], None] = print):
+    args = parse_args(argv)
+    model_path = ensure_model(args.model, log_func=log_func)
     engine = Waifu2xCpuEngine(model_path, tile_size=args.tile_size)
     process_path(
         engine=engine,
         input_path=args.input,
         output_path=args.output,
         output_format=args.format,
+        log_func=log_func,
     )
+
+
+if __name__ == "__main__":
+    main()
