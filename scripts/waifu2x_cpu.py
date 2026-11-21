@@ -109,12 +109,27 @@ class Waifu2xCpuEngine:
         self.input_name = self.session.get_inputs()[0].name
 
     def process_tile(self, tile_rgb: np.ndarray) -> np.ndarray:
-        """Process a single (H, W, 3) uint8 tile."""
+        """Process a single (H, W, 3) uint8 tile with UNet dimension alignment."""
+        th, tw, _ = tile_rgb.shape
+        pad_bottom = (4 - (th % 4)) % 4
+        pad_right = (4 - (tw % 4)) % 4
+
+        if pad_bottom > 0 or pad_right > 0:
+            tile_rgb = np.pad(
+                tile_rgb,
+                ((0, pad_bottom), (0, pad_right), (0, 0)),
+                mode="edge",
+            )
+
         pad = self.pad
         padded = np.pad(tile_rgb, ((pad, pad), (pad, pad), (0, 0)), mode="reflect")
         inp = np.transpose(padded.astype(np.float32) / 255.0, (2, 0, 1))[np.newaxis, ...]
         out = self.session.run(None, {self.input_name: inp})[0][0]
         out = np.clip(np.transpose(out, (1, 2, 0)) * 255.0, 0, 255).astype(np.uint8)
+
+        if pad_bottom > 0 or pad_right > 0:
+            out = out[:th, :tw]
+
         return out
 
     def process_image(self, img: Image.Image) -> Image.Image:
