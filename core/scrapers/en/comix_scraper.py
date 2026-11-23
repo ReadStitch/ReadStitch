@@ -311,7 +311,7 @@ class ComixScraper(BaseScraper):
         
         api_images = []
         
-        # Try to get the intercepted images from the browser JS context
+        # 1. Tentar pegar imagens interceptadas via JS context
         try:
             pages_data = driver.execute_script("return window.__interceptedImages;")
             
@@ -353,13 +353,62 @@ class ComixScraper(BaseScraper):
             print("Erro ao coletar window.__interceptedImages:", e)
             
         if api_images:
-            # Salvar cookies para baixar no request normal depois
             self._uc_cookies = session.cookies.get_dict()
             self._uc_ua = session.headers.get('User-Agent')
             return api_images
+
+        # 2. Extrair URLs diretamente da árvore React Fiber de cada .rpage-page
+        try:
+            fiber_urls = driver.execute_script('''
+                function extractUrls() {
+                    const pages = Array.from(document.querySelectorAll('.rpage-page'));
+                    if (!pages.length) return [];
+                    function findUrl(val) {
+                        if (!val) return null;
+                        if (typeof val === 'string' && val.startsWith('http')) return val;
+                        if (Array.isArray(val)) {
+                            for (let item of val) {
+                                let u = findUrl(item);
+                                if (u) return u;
+                            }
+                        }
+                        return null;
+                    }
+                    return pages.map(p => {
+                        const fiberKey = Object.keys(p).find(k => k.startsWith('__reactFiber'));
+                        let found = null;
+                        if (fiberKey) {
+                            let fiber = p[fiberKey];
+                            for (let d = 0; d < 4 && fiber && !found; d++) {
+                                let s = fiber.memoizedState;
+                                while (s && !found) {
+                                    found = findUrl(s.memoizedState);
+                                    s = s.next;
+                                }
+                                fiber = fiber.return;
+                            }
+                        }
+                        if (!found) {
+                            const img = p.querySelector('img.rpage-page__img, img');
+                            if (img && (img.src || img.getAttribute('src'))) {
+                                found = img.src || img.getAttribute('src');
+                            }
+                        }
+                        return found;
+                    });
+                }
+                return extractUrls();
+            ''')
+            valid_fiber_urls = [u for u in (fiber_urls or []) if u]
+            if valid_fiber_urls:
+                self._uc_cookies = session.cookies.get_dict()
+                self._uc_ua = session.headers.get('User-Agent')
+                return valid_fiber_urls
+        except Exception as e:
+            print("Erro ao extrair URLs via React Fiber:", e)
             
-        # FALLBACK: O Comix carrega as imagens via scroll (lazy load)
-        print("Interceptação JSON falhou. Usando scroll manual...")
+        # 3. FALLBACK: O Comix carrega as imagens via scroll (lazy load)
+        print("Interceptação Fiber falhou. Usando scroll manual...")
         for _ in range(80):
             driver.execute_script("window.scrollBy(0, 1500)")
             time.sleep(0.25)
@@ -373,13 +422,13 @@ class ComixScraper(BaseScraper):
         # Coletar as imagens renderizadas
         try:
             images = driver.execute_script('''
-                const imgs = Array.from(document.querySelectorAll('img'));
+                const imgs = Array.from(document.querySelectorAll('.rpage-page img, .rpage-page canvas, img'));
                 return imgs.map(img => img.getAttribute('data-src') || img.getAttribute('data-srcset') || img.src || img.getAttribute('src')).filter(src => {
                     if (!src) return false;
                     const low = src.toLowerCase();
                     // Ignore small placeholders/avatars/icons
                     if (low.includes('avatar') || low.includes('logo') || low.includes('icon') || low.includes('profile')) return false;
-                    return low.includes('.jpg') || low.includes('.png') || low.includes('.jpeg') || low.includes('.webp') || src.startsWith('data:image');
+                    return true;
                 });
             ''')
         except Exception:
@@ -402,9 +451,16 @@ class ComixScraper(BaseScraper):
         return ordered
 
     def download_image(self, url, output_path):
+        import base64
         import requests
         from urllib.parse import urlparse
         
+        if url.startswith("data:image"):
+            header, encoded = url.split(",", 1)
+            with open(output_path, "wb") as f:
+                f.write(base64.b64decode(encoded))
+            return
+            
         is_scrambled = url.endswith("#scrambled")
         clean_url = url.split("#")[0]
         
@@ -429,8 +485,99 @@ class ComixScraper(BaseScraper):
         else:
             headers['Origin'] = 'https://comix.to'
         
-        res = requests.get(clean_url, headers=headers, cookies=cookies)
-        res.raise_for_status()
+        res = None
+        try:
+            res = requests.get(clean_url, headers=headers, cookies=cookies, timeout=15)
+            if res.status_code == 403:
+                res = None
+            else:
+                res.raise_for_status()
+        except Exception:
+            res = None
+
+        if res is None:
+            driver = get_uc_driver()
+            load_script = '''
+                const rawUrl = arguments[0];
+                const done = arguments[arguments.length - 1];
+
+                function getCandidateUrls(uStr) {
+                    const list = [uStr];
+                    try {
+                        const u = new URL(uStr);
+                        const fallbacks = [
+                            'happylife17.site',
+                            'creativedailylife.site',
+                            'thebrandonblog.site',
+                            'kkplayer.wtf',
+                            'myartandsoul.site'
+                        ];
+                        for (let fb of fallbacks) {
+                            if (!u.hostname.endsWith(fb)) {
+                                const parts = u.hostname.split('.');
+                                const sub = parts.length > 2 ? parts[0] : '';
+                                const newHost = sub ? (sub + '.' + fb) : fb;
+                                const copy = new URL(uStr);
+                                copy.hostname = newHost;
+                                list.push(copy.toString());
+                            }
+                        }
+                    } catch(e) {}
+                    return list;
+                }
+
+                async function loadSingle() {
+                    const urlsToTry = getCandidateUrls(rawUrl);
+                    for (let u of urlsToTry) {
+                        try {
+                            const dataUrl = await new Promise((resolve, reject) => {
+                                const img = document.createElement('img');
+                                img.referrerPolicy = 'no-referrer';
+                                const timer = setTimeout(() => {
+                                    img.src = '';
+                                    img.remove();
+                                    reject(new Error('timeout'));
+                                }, 12000);
+                                img.onload = () => {
+                                    clearTimeout(timer);
+                                    try {
+                                        const canvas = document.createElement('canvas');
+                                        canvas.width = img.naturalWidth;
+                                        canvas.height = img.naturalHeight;
+                                        const ctx = canvas.getContext('2d');
+                                        ctx.drawImage(img, 0, 0);
+                                        const res = canvas.toDataURL('image/jpeg', 0.95);
+                                        img.remove();
+                                        resolve(res);
+                                    } catch(err) {
+                                        img.remove();
+                                        reject(err);
+                                    }
+                                };
+                                img.onerror = () => {
+                                    clearTimeout(timer);
+                                    img.remove();
+                                    reject(new Error('img load error'));
+                                };
+                                img.src = u;
+                                document.body.appendChild(img);
+                            });
+                            return {success: true, data: dataUrl};
+                        } catch(e) {}
+                    }
+                    return {success: false, error: 'all candidate mirrors failed'};
+                }
+                loadSingle().then(done);
+            '''
+            out = driver.execute_async_script(load_script, clean_url)
+            if out and out.get('success') and out.get('data'):
+                raw_b64 = out['data'].split(',', 1)[1]
+                with open(output_path, 'wb') as f:
+                    f.write(base64.b64decode(raw_b64))
+                return
+            else:
+                raise Exception(f"Falha ao carregar imagem no navegador: {out.get('error') if out else 'desconhecido'}")
+
         data = res.content
         
         raw_scramble_seed = res.headers.get("x-scramble-seed")
@@ -603,6 +750,8 @@ class ComixScraper(BaseScraper):
 
     def download_chapter(self, chapter_url, output_dir, chapter_name, max_workers=5):
         import os
+        import base64
+        import logging
         import concurrent.futures
         
         target_dir = os.path.join(output_dir, chapter_name)
@@ -612,19 +761,122 @@ class ComixScraper(BaseScraper):
         if not images:
             return 0
             
-        def _download(args):
-            idx, url = args
-            filepath = os.path.join(target_dir, f"{idx+1:03d}.jpg")
-            if not os.path.exists(filepath):
-                try:
-                    self.download_image(url, filepath)
-                except Exception as e:
-                    import logging
-                    logging.getLogger(__name__).error(f"Erro ao baixar {url}: {e}")
-                    return None
-            return filepath
-            
-        with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
-            list(executor.map(_download, enumerate(images)))
-            
+        driver = get_uc_driver()
+        batch_script = '''
+        const batch = arguments[0];
+        const done = arguments[arguments.length - 1];
+
+        function getCandidateUrls(rawUrl) {
+            const list = [rawUrl];
+            try {
+                const u = new URL(rawUrl);
+                const fallbacks = [
+                    'happylife17.site',
+                    'creativedailylife.site',
+                    'thebrandonblog.site',
+                    'kkplayer.wtf',
+                    'myartandsoul.site'
+                ];
+                for (let fb of fallbacks) {
+                    if (!u.hostname.endsWith(fb)) {
+                        const parts = u.hostname.split('.');
+                        const sub = parts.length > 2 ? parts[0] : '';
+                        const newHost = sub ? (sub + '.' + fb) : fb;
+                        const copy = new URL(rawUrl);
+                        copy.hostname = newHost;
+                        list.push(copy.toString());
+                    }
+                }
+            } catch(e) {}
+            return list;
+        }
+
+        async function loadOne(item) {
+            const urlsToTry = getCandidateUrls(item.url);
+            for (let u of urlsToTry) {
+                try {
+                    const dataUrl = await new Promise((resolve, reject) => {
+                        const img = document.createElement('img');
+                        img.referrerPolicy = 'no-referrer';
+                        const timer = setTimeout(() => {
+                            img.src = '';
+                            img.remove();
+                            reject(new Error('timeout'));
+                        }, 12000);
+                        img.onload = () => {
+                            clearTimeout(timer);
+                            try {
+                                const canvas = document.createElement('canvas');
+                                canvas.width = img.naturalWidth;
+                                canvas.height = img.naturalHeight;
+                                const ctx = canvas.getContext('2d');
+                                ctx.drawImage(img, 0, 0);
+                                const res = canvas.toDataURL('image/jpeg', 0.95);
+                                img.remove();
+                                resolve(res);
+                            } catch(err) {
+                                img.remove();
+                                reject(err);
+                            }
+                        };
+                        img.onerror = () => {
+                            clearTimeout(timer);
+                            img.remove();
+                            reject(new Error('img load error'));
+                        };
+                        img.src = u;
+                        document.body.appendChild(img);
+                    });
+                    return {index: item.index, success: true, data: dataUrl};
+                } catch(e) {}
+            }
+            return {index: item.index, success: false, error: 'all candidate mirrors failed'};
+        }
+
+        Promise.all(batch.map(loadOne)).then(done);
+        '''
+
+        # Baixar em lotes de 10 imagens via navegador
+        BATCH_SIZE = 10
+        for i in range(0, len(images), BATCH_SIZE):
+            chunk = images[i:i + BATCH_SIZE]
+            needed = []
+            for offset, u in enumerate(chunk):
+                idx = i + offset
+                filepath = os.path.join(target_dir, f"{idx+1:03d}.jpg")
+                if not os.path.exists(filepath):
+                    needed.append({'index': idx, 'url': u.split('#')[0]})
+                    
+            if not needed:
+                continue
+                
+            try:
+                results = driver.execute_async_script(batch_script, needed)
+            except Exception as e:
+                logging.getLogger(__name__).warning(f"Comix: Erro no lote de download via navegador: {e}")
+                results = []
+                
+            downloaded_indices = set()
+            for r in (results or []):
+                idx = r['index']
+                filepath = os.path.join(target_dir, f"{idx+1:03d}.jpg")
+                if r.get('success') and r.get('data'):
+                    try:
+                        raw_b64 = r['data'].split(',', 1)[1]
+                        with open(filepath, 'wb') as f:
+                            f.write(base64.b64decode(raw_b64))
+                        downloaded_indices.add(idx)
+                    except Exception as e:
+                        logging.getLogger(__name__).error(f"Erro ao salvar imagem {idx+1}: {e}")
+
+            # Fallback individual para qualquer imagem que falhou no lote
+            for item in needed:
+                idx = item['index']
+                if idx not in downloaded_indices:
+                    filepath = os.path.join(target_dir, f"{idx+1:03d}.jpg")
+                    try:
+                        self.download_image(images[idx], filepath)
+                    except Exception as e:
+                        logging.getLogger(__name__).error(f"Erro no fallback da imagem {idx+1}: {e}")
+                        
         return len(images)

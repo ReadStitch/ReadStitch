@@ -29,6 +29,8 @@ class UCManager:
         # Omitimos o headless=True porque Cloudflare bloqueia headles=new com Turnstile.
         # Movemos a janela para fora da tela para mantê-la invisível sem acionar proteções anti-bot
         options.add_argument('--window-position=-32000,-32000')
+        options.add_argument('--disable-web-security')
+        options.add_argument('--disable-site-isolation-trials')
         if profile_dir:
             options.add_argument(f"--user-data-dir={profile_dir}")
         if extra_args:
