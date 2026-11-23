@@ -567,10 +567,10 @@ class DownloaderController(QObject):
             QMessageBox.warning(self.w, "Aviso", "Por favor, selecione uma pasta de destino.")
             return
 
+        url = self.w.dlUrlField.text().strip()
         if getattr(self, "_fetched_series_title", None):
             series_name = self._fetched_series_title
         else:
-            url = self.w.dlUrlField.text().strip()
             clean_url = url.split('?')[0].strip('/')
             parts = [p for p in clean_url.split('/') if p]
             
