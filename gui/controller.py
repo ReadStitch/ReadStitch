@@ -505,6 +505,9 @@ def _on_load() -> None:
         elif text == "KakaoPage":
             _main_window.loginEmailInput.setText(_settings.load("kakao_email"))
             _main_window.loginPassInput.setText(_settings.load("kakao_password"))
+        elif text == "Toomics":
+            _main_window.loginEmailInput.setText(_settings.load("toomics_email"))
+            _main_window.loginPassInput.setText(_settings.load("toomics_password"))
 
     on_login_site_changed(_main_window.loginSiteCombo.currentText())
     _main_window.parallelProcessingCheckbox.setChecked(
@@ -584,6 +587,9 @@ def _bind_signals() -> None:
         elif text == "KakaoPage":
             _main_window.loginEmailInput.setText(_settings.load("kakao_email"))
             _main_window.loginPassInput.setText(_settings.load("kakao_password"))
+        elif text == "Toomics":
+            _main_window.loginEmailInput.setText(_settings.load("toomics_email"))
+            _main_window.loginPassInput.setText(_settings.load("toomics_password"))
 
     w.loginSiteCombo.currentTextChanged.connect(on_login_site_changed)
 
@@ -611,6 +617,8 @@ def _bind_signals() -> None:
             _settings.save("takecomic_email", text)
         elif site == "KakaoPage":
             _settings.save("kakao_email", text)
+        elif site == "Toomics":
+            _settings.save("toomics_email", text)
 
     def on_login_pass_changed(text):
         site = w.loginSiteCombo.currentText()
@@ -636,6 +644,8 @@ def _bind_signals() -> None:
             _settings.save("takecomic_password", text)
         elif site == "KakaoPage":
             _settings.save("kakao_password", text)
+        elif site == "Toomics":
+            _settings.save("toomics_password", text)
 
     w.loginEmailInput.textChanged.connect(on_login_email_changed)
     w.loginPassInput.textChanged.connect(on_login_pass_changed)

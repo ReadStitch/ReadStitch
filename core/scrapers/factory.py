@@ -15,6 +15,7 @@ from .en.ezmanga_scraper import EzmangaScraper
 from .en.duskscans_scraper import DuskScansScraper
 from .en.omegascans_scraper import OmegaScansScraper
 from .en.toongod_scraper import ToonGodScraper
+from .en.toomics_scraper import ToomicsScraper
 
 from .kr.kakao_scraper import KakaoScraper
 from .kr.naver_scraper import NaverScraper
@@ -162,6 +163,8 @@ def get_scraper_for_url(url):
         return OmegaScansScraper()
     elif 'toongod.org' in url_lower or 'toongod' in url_lower:
         return ToonGodScraper()
+    elif 'toomics.com' in url_lower or 'toomics' in url_lower:
+        return ToomicsScraper()
     elif 'asurascans.com' in url_lower or 'asuracomic.net' in url_lower or 'asuracomics.com' in url_lower or 'asura' in url_lower:
         return AsuraScraper()
     # Default to Asura

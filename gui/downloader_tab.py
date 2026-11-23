@@ -300,6 +300,8 @@ class DownloaderController(QObject):
             site = "TakeComic"
         elif "kakao.com" in url_lower:
             site = "KakaoPage"
+        elif "toomics.com" in url_lower:
+            site = "Toomics"
         elif "asura" in url_lower:
             site = "Asura Scans"
         else:
@@ -466,9 +468,13 @@ class DownloaderController(QObject):
             keys = list(groups_dict.keys())
             self.dlGroupCombo.addItems(keys)
             
-            # Auto-selecionar o grupo com mais capítulos
-            largest_group = max(groups_dict.keys(), key=lambda k: len(groups_dict[k]))
-            idx = keys.index(largest_group)
+            # Auto-selecionar o grupo preferido pelo scraper se definido, senao o maior
+            preferred = getattr(self.fetch_thread.scraper, "preferred_group", None) if hasattr(self, 'fetch_thread') else None
+            if preferred and preferred in keys:
+                idx = keys.index(preferred)
+            else:
+                largest_group = max(groups_dict.keys(), key=lambda k: len(groups_dict[k]))
+                idx = keys.index(largest_group)
             self.dlGroupCombo.setCurrentIndex(idx)
         else:
             self.groupWidget.setVisible(False)
@@ -480,6 +486,7 @@ class DownloaderController(QObject):
             self.spinTo.setMaximum(max(total, 9999))
             self.spinTo.setValue(total)
             
+        self._fetched_series_title = getattr(self.fetch_thread.scraper, "series_title", "") if hasattr(self, 'fetch_thread') else ""
         self.w.dlDownloadButton.setEnabled(True)
 
     def on_group_changed(self, group_name):
@@ -560,17 +567,20 @@ class DownloaderController(QObject):
             QMessageBox.warning(self.w, "Aviso", "Por favor, selecione uma pasta de destino.")
             return
 
-        url = self.w.dlUrlField.text().strip()
-        clean_url = url.split('?')[0].strip('/')
-        parts = [p for p in clean_url.split('/') if p]
-        
-        if "chapter" in parts:
-            idx = parts.index("chapter")
-            series_name = parts[idx - 1] if idx > 0 else parts[-1]
-        elif parts and parts[-1] in ('list', 'viewer') and len(parts) > 1:
-            series_name = parts[-2]
+        if getattr(self, "_fetched_series_title", None):
+            series_name = self._fetched_series_title
         else:
-            series_name = parts[-1] if parts else "Download"
+            url = self.w.dlUrlField.text().strip()
+            clean_url = url.split('?')[0].strip('/')
+            parts = [p for p in clean_url.split('/') if p]
+            
+            if "chapter" in parts:
+                idx = parts.index("chapter")
+                series_name = parts[idx - 1] if idx > 0 else parts[-1]
+            elif parts and parts[-1] in ('list', 'viewer') and len(parts) > 1:
+                series_name = parts[-2]
+            else:
+                series_name = parts[-1] if parts else "Download"
             
         import re
         # Remove sufixos hexadecimais como -7b57f74d
