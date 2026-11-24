@@ -49,6 +49,7 @@ from .pt_br.imperiodabritannia_scraper import ImperioDaBritanniaScraper
 from .pt_br.noxmangas_scraper import NoxMangasScraper
 from .pt_br.dropescan_scraper import DropeScanScraper
 from .pt_br.hanamiheaven_scraper import HanamiHeavenScraper
+from .pt_br.hentaiyoga_scraper import HentaiYogaScraper
 
 def get_scraper_for_url(url):
     url_lower = url.lower()
@@ -165,6 +166,8 @@ def get_scraper_for_url(url):
         return ToonGodScraper()
     elif 'toomics.com' in url_lower or 'toomics' in url_lower:
         return ToomicsScraper()
+    elif 'hentai.yoga' in url_lower or 'hentaiyoga' in url_lower:
+        return HentaiYogaScraper()
     elif 'asurascans.com' in url_lower or 'asuracomic.net' in url_lower or 'asuracomics.com' in url_lower or 'asura' in url_lower:
         return AsuraScraper()
     # Default to Asura
